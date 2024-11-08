@@ -1,19 +1,21 @@
+use crate::contract::MineContract;
+use ed25519_dalek::Keypair;
 use soroban_fixed_point_math::FixedPoint;
-use soroban_sdk::{testutils::BytesN as _, xdr::ToXdr, Address, BytesN, Env};
+use soroban_sdk::{testutils::BytesN as _, xdr::ToXdr, Address, Bytes, BytesN, Env};
+use stellar_strkey::{ed25519, Strkey};
 use tiny_keccak::{Hasher, Keccak};
 
 pub fn find_nonce_and_hash(
     env: &Env,
-    mine: &Address,
-    miner: &Address,
     index: &u64,
     entropy: &BytesN<32>,
+    miner: &Address,
     zero_count: u32,
 )
-// -> (i128, BytesN<32>)
+// -> (u128, BytesN<32>)
 {
     let mut nonce = 0;
-    let mut hash_b = generate_hash(env, mine, miner, index, &nonce, entropy);
+    let mut hash_b = generate_hash(env, index, &nonce, entropy, miner);
 
     println!("{:?}", hash_b);
 
@@ -35,6 +37,37 @@ pub fn find_nonce_and_hash(
 
     //     nonce += 1;
     // }
+}
+
+#[test]
+fn test_address_lengths() {
+    let env: Env = Env::default();
+
+    let mine_address: Address = env.register_contract(None, MineContract);
+
+    let ed25519_keypair = Keypair::from_bytes(&[
+        149, 154, 40, 132, 13, 234, 167, 87, 182, 44, 152, 45, 242, 179, 187, 17, 139, 106, 49, 85,
+        249, 235, 17, 248, 24, 170, 19, 164, 23, 117, 145, 252, 172, 35, 170, 26, 69, 15, 75, 127,
+        192, 170, 166, 54, 68, 127, 218, 29, 130, 173, 159, 1, 253, 192, 48, 242, 80, 12, 55, 152,
+        223, 122, 198, 96,
+    ])
+    .unwrap();
+
+    let ed25519_strkey =
+        Strkey::PublicKeyEd25519(ed25519::PublicKey(ed25519_keypair.public.to_bytes()));
+    let ed25519_address = Bytes::from_slice(&env, ed25519_strkey.to_string().as_bytes());
+    let ed25519_address = Address::from_string_bytes(&ed25519_address);
+
+    println!(
+        "g-{:?} {:?}",
+        ed25519_address.clone().to_xdr(&env).len(),
+        ed25519_address.to_string()
+    );
+    println!(
+        "c-{:?} {:?}",
+        mine_address.clone().to_xdr(&env).len(),
+        mine_address.to_string()
+    );
 }
 
 #[test]
@@ -66,11 +99,9 @@ fn count_bytes() {
 
 #[test]
 fn test_fixed_div_floor() {
-    let x: i128 = 64 + 0;
-    let y: i128 = 192 + 0;
-    let denominator: i128 = 10000000;
-
-    // Math.pow(1_0000000, 1 / 9);
+    let x: i128 = 10;
+    let y: i128 = 100;
+    let denominator: i128 = 1_0000000;
 
     let res = x.fixed_div_floor(y, denominator);
 
@@ -79,15 +110,15 @@ fn test_fixed_div_floor() {
 
 #[test]
 fn test_integer_nth_root() {
-    let y = 11100;
-    let n = 3;
+    let y = 1_0000000;
+    let n = 8;
 
     let res = integer_nth_root(y, n);
 
     println!("{:?}", res);
 }
 
-fn generate_keccak(hash_b: &mut [u8; 136], nonce: &i128) -> [u8; 32] {
+fn generate_keccak(hash_b: &mut [u8; 88], nonce: &u128) -> [u8; 32] {
     let mut hash = [0u8; 32];
 
     hash_b[88..88 + 16].copy_from_slice(&nonce.to_be_bytes());
@@ -101,28 +132,26 @@ fn generate_keccak(hash_b: &mut [u8; 136], nonce: &i128) -> [u8; 32] {
 
 fn generate_hash(
     env: &Env,
-    mine: &Address,
-    miner: &Address,
     index: &u64,
-    nonce: &i128,
+    nonce: &u128,
     entropy: &BytesN<32>,
-) -> [u8; 136] {
-    let mut hash_b = [0u8; 136];
+    miner: &Address,
+) -> [u8; 88] {
+    let mut hash_b = [0u8; 88];
 
-    let mut mine_b = [0u8; 40];
-    mine.to_xdr(&env).copy_into_slice(&mut mine_b);
-
-    let mut miner_b = [0u8; 40];
-    miner.clone().to_xdr(&env).copy_into_slice(&mut miner_b);
+    let mut miner_b = [0u8; 32];
+    let miner_bytes = miner.clone().to_xdr(&env);
+    miner_bytes
+        .slice(miner_bytes.len() - 32..)
+        .copy_into_slice(&mut miner_b);
 
     let index_b = index.to_be_bytes();
     let nonce_b = nonce.to_be_bytes();
 
-    hash_b[0..40].copy_from_slice(&mine_b);
-    hash_b[40..40 + 40].copy_from_slice(&miner_b);
-    hash_b[80..80 + 8].copy_from_slice(&index_b);
-    hash_b[88..88 + 16].copy_from_slice(&nonce_b);
-    hash_b[104..104 + 32].copy_from_slice(&entropy.to_array());
+    hash_b[0..8].copy_from_slice(&index_b);
+    hash_b[8..8 + 16].copy_from_slice(&nonce_b);
+    hash_b[24..24 + 32].copy_from_slice(&entropy.to_array());
+    hash_b[56..56 + 32].copy_from_slice(&miner_b);
 
     return hash_b;
 }
