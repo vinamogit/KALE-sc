@@ -1,1 +1,2 @@
-mod test_discover_mine;
+mod test;
+mod utils;

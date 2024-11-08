@@ -6,6 +6,9 @@ members = [
 
 [workspace.dependencies]
 soroban-sdk = "21.7.6"
+soroban-fixed-point-math = "1.2.0"
+tiny-keccak = { version = "2.0.2" }
+hex = "0.4.3"
 
 [profile.release]
 opt-level = "z"
