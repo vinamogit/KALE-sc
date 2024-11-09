@@ -1,7 +1,12 @@
+#![cfg(test)]
+
+use std::println;
+extern crate std;
+
 use crate::contract::MineContract;
 use ed25519_dalek::Keypair;
 use soroban_fixed_point_math::FixedPoint;
-use soroban_sdk::{testutils::BytesN as _, xdr::ToXdr, Address, Bytes, BytesN, Env};
+use soroban_sdk::{xdr::ToXdr, Address, Bytes, BytesN, Env};
 use stellar_strkey::{ed25519, Strkey};
 use tiny_keccak::{Hasher, Keccak};
 

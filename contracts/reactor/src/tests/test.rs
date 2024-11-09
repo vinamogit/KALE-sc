@@ -1,11 +1,13 @@
 #![cfg(test)]
 
-use std::println;
+use std::{print, println};
 extern crate std;
 
 use crate::{
-    contract::{Block, Errors, Mine, MineContract, MineContractClient, StorageKeys},
+    contract::{MineContract, MineContractClient},
+    errors::Errors,
     tests::utils::find_nonce_and_hash,
+    types::{Block, Mine, StorageKeys},
 };
 use soroban_sdk::{
     testutils::{Address as _, EnvTestConfig, Ledger},

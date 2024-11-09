@@ -1,109 +1,84 @@
-use soroban_sdk::{contracttype, Address, BytesN, Env, String};
+use soroban_sdk::{Address, Env};
 
-const DAY_LEDGER: u32 = 17280;
+use crate::{
+    types::{Block, Mine, StorageKeys},
+    WEEK_OF_LEDGERS,
+};
 
-#[contracttype]
-pub struct ReactorState {
-    // This is the asset that is going to be minted by this contract.
-    // This contract must be the admin of the asset.
-    pub token: Address,
+pub fn extend_instance_ttl(env: &Env) {
+    let max_ttl = env.storage().max_ttl();
 
-    // This is the current mineral available to be extracted
-    pub current: u64,
-
-    // The amount of zeroes to put in front of the transaction
-    pub difficulty: u32,
-
-    // If this is true, mining is dead
-    pub is_nuked: bool,
-
-    // This is the first miner, it becomes the owner of the mine
-    pub finder: Address,
-}
-
-#[contracttype]
-pub struct Block {
-    pub index: u64,
-    pub message: String,
-    pub prev_hash: BytesN<32>,
-    pub nonce: u64,
-    pub miner: Address,
-
-    // The hash is done with index + message + prev_hash + nonce + miner
-    pub hash: BytesN<32>,
-    pub timestamp: u64,
-}
-
-// #[contracttype]
-// pub struct Stake {
-//     pub owner: Address,
-//     pub amount: u128,
-//     pub cools_at: u64,
-// }
-
-#[contracttype]
-pub enum StorageKeys {
-    MineState,
-    Block(u64),
-    Stake(Address),
-}
-
-pub fn pump_core(e: &Env) {
-    e.storage()
+    env.storage()
         .instance()
-        .extend_ttl(DAY_LEDGER, DAY_LEDGER * 3);
+        .extend_ttl(max_ttl - WEEK_OF_LEDGERS, max_ttl);
 }
 
-pub fn set_state(e: &Env, state: &ReactorState) {
-    e.storage().instance().set(&StorageKeys::MineState, state);
+pub fn has_mine(env: &Env) -> bool {
+    env.storage()
+        .instance()
+        .has::<StorageKeys>(&StorageKeys::Mine)
+}
+pub fn get_mine(env: &Env) -> Option<Mine> {
+    env.storage()
+        .instance()
+        .get::<StorageKeys, Mine>(&StorageKeys::Mine)
+}
+pub fn set_mine(env: &Env, mine: &Mine) {
+    env.storage()
+        .instance()
+        .set::<StorageKeys, Mine>(&StorageKeys::Mine, mine);
 }
 
-pub fn get_state(e: &Env) -> Option<ReactorState> {
-    e.storage().instance().get(&StorageKeys::MineState)
+pub fn get_block(env: &Env, index: u64) -> Option<Block> {
+    env.storage()
+        .temporary()
+        .get::<StorageKeys, Block>(&StorageKeys::Block(index))
+}
+pub fn set_block(env: &Env, index: u64, block: &Block) {
+    env.storage()
+        .temporary()
+        .set::<StorageKeys, Block>(&StorageKeys::Block(index), block);
 }
 
-pub fn set_block(e: &Env, attempt: &Block) {
-    e.storage()
-        .persistent()
-        .set(&StorageKeys::Block(attempt.index.clone()), attempt);
+pub fn has_pail(env: &Env, miner: Address, index: u64) -> bool {
+    let pail_key = StorageKeys::Pail(miner, index);
+
+    env.storage().temporary().has::<StorageKeys>(&pail_key)
+}
+pub fn get_pail(env: &Env, miner: Address, index: u64) -> Option<i128> {
+    let pail_key = StorageKeys::Pail(miner, index);
+
+    env.storage()
+        .temporary()
+        .get::<StorageKeys, i128>(&pail_key)
+}
+pub fn set_pail(env: &Env, miner: Address, index: u64, amount: i128) {
+    let pail_key = StorageKeys::Pail(miner, index);
+
+    env.storage()
+        .temporary()
+        .set::<StorageKeys, i128>(&pail_key, &amount.max(1));
+}
+pub fn remove_pail(env: &Env, miner: Address, index: u64) {
+    let pail_key = StorageKeys::Pail(miner, index);
+
+    env.storage().temporary().remove(&pail_key);
 }
 
-pub fn get_block(e: &Env, index: &u64) -> Option<Block> {
-    e.storage()
-        .persistent()
-        .get(&StorageKeys::Block(index.clone()))
+pub fn get_kail(env: &Env, miner: Address, index: u64) -> Option<u32> {
+    let kale_key = StorageKeys::Kale(miner, index);
+
+    env.storage().temporary().get::<StorageKeys, u32>(&kale_key)
 }
+pub fn set_kail(env: &Env, miner: Address, index: u64, zero_count: &u32) {
+    let kale_key = StorageKeys::Kale(miner, index);
 
-pub fn pump_block(e: &Env, index: &u64) {
-    e.storage().persistent().extend_ttl(
-        &StorageKeys::Block(index.clone()),
-        DAY_LEDGER * 15,
-        DAY_LEDGER * 30,
-    );
+    env.storage()
+        .temporary()
+        .set::<StorageKeys, u32>(&kale_key, zero_count);
 }
+pub fn remove_kail(env: &Env, miner: Address, index: u64) {
+    let kale_key = StorageKeys::Kale(miner, index);
 
-// pub fn get_stake(e: &Env, miner: &Address) -> Option<Stake> {
-//     e.storage()
-//         .persistent()
-//         .get(&StorageKeys::Stake(miner.clone()))
-// }
-
-// pub fn set_stake(e: &Env, stake: &Stake) {
-//     e.storage()
-//         .persistent()
-//         .set(&StorageKeys::Stake(stake.owner.clone()), stake);
-// }
-
-pub fn delete_stake(e: &Env, miner: &Address) {
-    e.storage()
-        .persistent()
-        .remove(&StorageKeys::Stake(miner.clone()));
-}
-
-pub fn pump_stake(e: &Env, miner: &Address) {
-    e.storage().persistent().extend_ttl(
-        &StorageKeys::Stake(miner.clone()),
-        DAY_LEDGER * 15,
-        DAY_LEDGER * 30,
-    );
+    env.storage().temporary().remove(&kale_key);
 }
