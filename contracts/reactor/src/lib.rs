@@ -19,14 +19,6 @@ pub const WEEK_OF_LEDGERS: u32 = 60 * 60 * 24 / 5 * 7;
 #[contract]
 pub struct MineKalepailContract;
 
-pub trait KalePailTrait {
-    fn get_pail(env: Env, miner: Address, amount: i128);
-
-    fn get_kale(env: Env, miner: Address, hash: BytesN<32>, nonce: u128);
-
-    fn claim_kale(env: Env, miner: Address, index: u64);
-}
-
 pub trait MineContractTrait {
     fn discover_mine(env: Env, admin: Address, token: Address);
 
@@ -35,4 +27,12 @@ pub trait MineContractTrait {
     fn unpause_mine(env: Env);
 
     fn upgrade_mine(env: Env, hash: BytesN<32>);
+}
+
+pub trait KalepailTrait {
+    fn get_pail(env: Env, miner: Address, amount: i128);
+
+    fn get_kale(env: Env, miner: Address, hash: BytesN<32>, nonce: u128);
+
+    fn claim_kale(env: Env, miner: Address, index: u64);
 }

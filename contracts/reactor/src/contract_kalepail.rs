@@ -8,11 +8,11 @@ use crate::{
         remove_pail, set_block, set_kail, set_mine, set_pail,
     },
     types::Block,
-    KalePailTrait, MineKalepailContract, MineKalepailContractClient, BLOCK_REWARD, MINER_EXPONENT,
+    KalepailTrait, MineKalepailContract, MineKalepailContractClient, BLOCK_REWARD, MINER_EXPONENT,
 };
 
 #[contractimpl]
-impl KalePailTrait for MineKalepailContract {
+impl KalepailTrait for MineKalepailContract {
     fn get_pail(env: Env, miner: Address, amount: i128) {
         miner.require_auth();
 
@@ -74,23 +74,7 @@ impl KalePailTrait for MineKalepailContract {
         let mut block = get_block(&env, mine.index)
             .unwrap_or_else(|| panic_with_error!(&env, &Errors::BlockNotFound));
 
-        let mut hash_b = [0u8; 88];
-
-        let mut miner_b = [0u8; 32];
-        let miner_bytes = miner.clone().to_xdr(&env);
-        miner_bytes
-            .slice(miner_bytes.len() - 32..)
-            .copy_into_slice(&mut miner_b);
-
-        hash_b[0..8].copy_from_slice(&mine.index.to_be_bytes());
-        hash_b[8..8 + 16].copy_from_slice(&nonce.to_be_bytes());
-        hash_b[24..24 + 32].copy_from_slice(&block.entropy.to_array());
-        hash_b[56..56 + 32].copy_from_slice(&miner_b);
-
-        let generated_hash = env
-            .crypto()
-            .keccak256(&Bytes::from_array(&env, &hash_b))
-            .to_bytes();
+        let generated_hash = generate_hash(&env, &miner, &mine.index, &nonce, &block.entropy);
 
         if hash != generated_hash {
             panic_with_error!(&env, &Errors::HashIsInvalid);
@@ -173,4 +157,24 @@ impl KalePailTrait for MineKalepailContract {
 
         extend_instance_ttl(&env);
     }
+}
+
+fn generate_hash(env: &Env, miner: &Address, index: &u64, nonce: &u128, entropy: &BytesN<32>) -> BytesN<32> {
+    let mut hash_b = [0u8; 88];
+
+    let mut miner_b = [0u8; 32];
+    let miner_bytes = miner.clone().to_xdr(env);
+    miner_bytes
+        .slice(miner_bytes.len() - 32..)
+        .copy_into_slice(&mut miner_b);
+
+    hash_b[0..8].copy_from_slice(&index.to_be_bytes());
+    hash_b[8..8 + 16].copy_from_slice(&nonce.to_be_bytes());
+    hash_b[24..24 + 32].copy_from_slice(&entropy.to_array());
+    hash_b[56..56 + 32].copy_from_slice(&miner_b);
+
+    env
+        .crypto()
+        .keccak256(&Bytes::from_array(env, &hash_b))
+        .to_bytes()
 }
