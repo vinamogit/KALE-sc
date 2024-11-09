@@ -2,7 +2,7 @@
 stellar contract invoke --id CCKBHXBXG64JRXWCFYX4KS3QCVXFM2U52QUEJWCQCXC4H5UH56JER3BK --network testnet --source default -- discover_mine --admin default --asset CDPNUQSNEYRC43ZOPJLKHUAPPUMMEO7IMKHH62TKVSBEKZGSXBHK2OFE
 
 # Upgrade Mine
-stellar contract invoke --id CBLY65TXJDBPCM7R44UBUSS6TCUKUT34OLF3NZJBFUSJKFBOEKM5LKAQ --network testnet --source default -- upgrade_mine --hash 5559df216fea8194ef0373853ed3deecf55429d3e7a7658b2a33522678360861
+stellar contract invoke --id CCKBHXBXG64JRXWCFYX4KS3QCVXFM2U52QUEJWCQCXC4H5UH56JER3BK --network testnet --source default -- upgrade_mine --hash 46802d8ab9a64c77b56d870f0c78f37c0133f9701af2b8007d6f2a75f91c745c
 
 # Deploy SAC
 stellar contract asset deploy --asset KALEv2:GBF7WP5EJYB2SSZPXFFIVGGDRYPHF7JFHBW3SH2JSVXZKNPSCM53V7FJ --network testnet --source default

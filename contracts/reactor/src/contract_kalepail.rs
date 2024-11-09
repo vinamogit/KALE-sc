@@ -17,10 +17,6 @@ impl KalepailTrait for MineKalepailContract {
     fn get_pail(env: Env, miner: Address, amount: i128) {
         miner.require_auth();
 
-        if amount < 0 {
-            panic_with_error!(&env, &Errors::PailAmountTooLow);
-        }
-
         let asset = get_mine_asset(&env);
         let mut index = get_mine_index(&env);
         let entropy = get_mine_entropy(&env);
@@ -28,6 +24,10 @@ impl KalepailTrait for MineKalepailContract {
 
         if paused {
             panic_with_error!(&env, &Errors::MineIsPaused);
+        }
+
+        if amount < 0 {
+            panic_with_error!(&env, &Errors::PailAmountTooLow);
         }
 
         let mut block = match get_block(&env, index) {
@@ -57,8 +57,15 @@ impl KalepailTrait for MineKalepailContract {
             }
         };
 
+        // must come after block discovery as the index may have been bumped
         if has_pail(&env, miner.clone(), index) {
             panic_with_error!(&env, &Errors::AlreadyHasPail);
+        }
+
+        block.pool += amount as u64;
+
+        if amount > 0 {
+            token::Client::new(&env, &asset).transfer(&miner, &asset, &amount);
         }
 
         // NOTE consider adding a zero_count commitment to the pail vs just a stake amount
@@ -66,14 +73,7 @@ impl KalepailTrait for MineKalepailContract {
         // I think initially though I want to try this version and see what happens
 
         set_pail(&env, miner.clone(), index, amount, None);
-
-        block.pool += amount as u64;
-
         set_block(&env, index, &block);
-
-        if amount > 0 {
-            token::Client::new(&env, &asset).transfer(&miner, &asset, &amount);
-        }
 
         extend_instance_ttl(&env);
     }
@@ -82,10 +82,10 @@ impl KalepailTrait for MineKalepailContract {
         // No auth_require here so others can call this function on the `miner`'s behalf
 
         let index = get_mine_index(&env);
-
         let mut block = get_block(&env, index)
             .unwrap_or_else(|| panic_with_error!(&env, &Errors::BlockNotFound));
-
+        let (pail, kale) = get_pail(&env, miner.clone(), index)
+            .unwrap_or_else(|| panic_with_error!(&env, &Errors::PailNotFound));
         let generated_hash = generate_hash(&env, &miner, &index, &nonce, &block.entropy);
 
         if hash != generated_hash {
@@ -102,9 +102,6 @@ impl KalepailTrait for MineKalepailContract {
                 break;
             }
         }
-
-        let (pail, kale) = get_pail(&env, miner.clone(), index)
-            .unwrap_or_else(|| panic_with_error!(&env, &Errors::PailNotFound));
 
         match kale {
             Some(prev_zero_count) => {
@@ -131,16 +128,14 @@ impl KalepailTrait for MineKalepailContract {
     fn claim_kale(env: Env, miner: Address, index: u32) {
         let asset = get_mine_asset(&env);
         let mine_index = get_mine_index(&env);
+        let block = get_block(&env, index)
+            .unwrap_or_else(|| panic_with_error!(&env, &Errors::BlockNotFound));
+        let (pail, kale) = get_pail(&env, miner.clone(), index)
+            .unwrap_or_else(|| panic_with_error!(&env, &Errors::PailNotFound));
 
         if index >= mine_index {
             panic_with_error!(&env, &Errors::TooSoonToClaim);
         }
-
-        let block = get_block(&env, index)
-            .unwrap_or_else(|| panic_with_error!(&env, &Errors::BlockNotFound));
-
-        let (pail, kale) = get_pail(&env, miner.clone(), index)
-            .unwrap_or_else(|| panic_with_error!(&env, &Errors::PailNotFound));
 
         if kale.is_none() {
             panic_with_error!(&env, &Errors::KaleNotFound);
@@ -148,16 +143,6 @@ impl KalepailTrait for MineKalepailContract {
 
         let full_block_reward = BLOCK_REWARD + block.pool;
         let actual_block_reward = (full_block_reward - block.claimed_pool) as i128;
-
-        remove_pail(&env, miner.clone(), index);
-
-        // println!("kale {:?}", kale);
-        // println!("pail {:?}", pail);
-
-        // println!("block.zeros {:?}", block.zeros);
-        // println!("full_block_reward {:?}", full_block_reward);
-
-        // print!("\n");
 
         let kale = kale.unwrap();
         let reward = (MINER_EXPONENT.pow(kale) as i128 * pail).fixed_div_floor(
@@ -167,6 +152,8 @@ impl KalepailTrait for MineKalepailContract {
         ) + pail;
 
         token::StellarAssetClient::new(&env, &asset).mint(&miner, &reward);
+
+        remove_pail(&env, miner.clone(), index);
 
         extend_instance_ttl(&env);
     }

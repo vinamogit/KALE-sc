@@ -39,29 +39,29 @@ impl MineContractTrait for MineKalepailContract {
     }
 
     fn pause_mine(env: Env) {
+        let admin = get_mine_admin(&env);
         let paused = get_mine_paused(&env);
+
+        admin.require_auth();
 
         if paused {
             panic_with_error!(&env, &Errors::MineIsPaused);
         }
 
-        let admin = get_mine_admin(&env);
-
-        admin.require_auth();
-
         set_mine_paused(&env, true);
+
+        // no `extend_instance_ttl` as the mine is being paused
     }
 
     fn unpause_mine(env: Env) {
+        let admin = get_mine_admin(&env);
         let paused = get_mine_paused(&env);
+
+        admin.require_auth();
 
         if paused {
             panic_with_error!(&env, &Errors::MineIsNotPaused);
         }
-
-        let admin = get_mine_admin(&env);
-
-        admin.require_auth();
 
         set_mine_paused(&env, false);
 
