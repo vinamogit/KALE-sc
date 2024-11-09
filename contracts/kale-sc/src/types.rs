@@ -13,11 +13,11 @@ pub struct Block {
 #[contracttype]
 #[derive(Clone, Debug, PartialEq)]
 pub enum Storage {
-    MineAdmin,          // : address
-    MineAsset,          // : address
-    MineIndex,          // : u32
-    MineEntropy,        // : bytes32
-    MinePaused,         // : bool
+    Homesteader,        // : address
+    HomesteadAsset,     // : address
+    FarmIndex,          // : u32
+    FarmEntropy,        // : bytes32
+    FarmPaused,         // : bool
     Block(u32),         // : Block
-    Pail(Address, u32), // miner, index : (stake_i128, Option<zero_count_u32>)
+    Pail(Address, u32), // farmer, index : (stake_i128, Option<zero_count_u32>)
 }

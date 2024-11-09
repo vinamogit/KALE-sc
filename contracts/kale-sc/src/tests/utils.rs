@@ -9,17 +9,17 @@ use soroban_sdk::{xdr::ToXdr, Address, Bytes, BytesN, Env};
 use stellar_strkey::{ed25519, Strkey};
 use tiny_keccak::{Hasher, Keccak};
 
-use crate::MineKalepailContract;
+use crate::Contract;
 
 pub fn find_nonce_and_hash(
     env: &Env,
     index: &u32,
     entropy: &BytesN<32>,
-    miner: &Address,
+    farmer: &Address,
     zero_count: u32,
 ) -> (u128, BytesN<32>) {
     let mut nonce = 0;
-    let mut hash_b = generate_hash(env, index, &nonce, entropy, miner);
+    let mut hash_b = generate_hash(env, index, &nonce, entropy, farmer);
 
     // println!("{:?}", hash_b);
 
@@ -49,7 +49,7 @@ pub fn find_nonce_and_hash(
 fn test_address_lengths() {
     let env: Env = Env::default();
 
-    let mine_address: Address = env.register_contract(None, MineKalepailContract);
+    let farm_address: Address = env.register_contract(None, Contract);
 
     let ed25519_keypair = Keypair::from_bytes(&[
         149, 154, 40, 132, 13, 234, 167, 87, 182, 44, 152, 45, 242, 179, 187, 17, 139, 106, 49, 85,
@@ -71,8 +71,8 @@ fn test_address_lengths() {
     );
     println!(
         "c-{:?} {:?}",
-        mine_address.clone().to_xdr(&env).len(),
-        mine_address.to_string()
+        farm_address.clone().to_xdr(&env).len(),
+        farm_address.to_string()
     );
 }
 
@@ -141,20 +141,20 @@ fn generate_hash(
     index: &u32,
     nonce: &u128,
     entropy: &BytesN<32>,
-    miner: &Address,
+    farmer: &Address,
 ) -> [u8; 84] {
     let mut hash_b = [0u8; 84];
 
-    let mut miner_b = [0u8; 32];
-    let miner_bytes = miner.clone().to_xdr(&env);
-    miner_bytes
-        .slice(miner_bytes.len() - 32..)
-        .copy_into_slice(&mut miner_b);
+    let mut farmer_b = [0u8; 32];
+    let farmer_bytes = farmer.clone().to_xdr(&env);
+    farmer_bytes
+        .slice(farmer_bytes.len() - 32..)
+        .copy_into_slice(&mut farmer_b);
 
     hash_b[..4].copy_from_slice(&index.to_be_bytes());
     hash_b[4..4 + 16].copy_from_slice(&nonce.to_be_bytes());
     hash_b[20..20 + 32].copy_from_slice(&entropy.to_array());
-    hash_b[52..].copy_from_slice(&miner_b);
+    hash_b[52..].copy_from_slice(&farmer_b);
 
     return hash_b;
 }

@@ -6,16 +6,16 @@ use soroban_sdk::contracterror;
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Errors {
     AlreadyDiscovered = 1,
-    MineNotFound = 2,
+    HomesteadNotFound = 2,
     PailAmountTooLow = 3,
     AlreadyHasPail = 4,
-    MineIsPaused = 5,
+    FarmIsPaused = 5,
     HashIsInvalid = 6,
     BlockNotFound = 7,
-    TooSoonToClaim = 8,
+    HarvestNotReady = 8,
     KaleNotFound = 9,
     PailNotFound = 10,
     ZeroCountTooLow = 11,
     AssetAdminMismatch = 12,
-    MineIsNotPaused = 13,
+    FarmIsNotPaused = 13,
 }

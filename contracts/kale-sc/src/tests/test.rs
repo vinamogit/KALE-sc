@@ -7,7 +7,7 @@ use crate::{
     errors::Errors,
     tests::utils::find_nonce_and_hash,
     types::{Block, Storage},
-    MineKalepailContract, MineKalepailContractClient,
+    Contract, ContractClient,
 };
 use soroban_sdk::{
     testutils::{Address as _, EnvTestConfig, Ledger},
@@ -29,46 +29,46 @@ fn test() {
 
     env.mock_all_auths();
 
-    let mine_address: Address = env.register_contract(None, MineKalepailContract);
-    let mine_client = MineKalepailContractClient::new(&env, &mine_address);
+    let farm_address: Address = env.register_contract(None, Contract);
+    let farm_client = ContractClient::new(&env, &farm_address);
 
-    let asset_sac = env.register_stellar_asset_contract_v2(mine_address.clone());
+    let asset_sac = env.register_stellar_asset_contract_v2(farm_address.clone());
     let asset_address = asset_sac.address();
-    let asset_admin = token::StellarAssetClient::new(&env, &asset_address);
+    let asset_homesteader = token::StellarAssetClient::new(&env, &asset_address);
     let asset_client = token::Client::new(&env, &asset_address);
 
-    let admin: Address = Address::generate(&env);
+    let homesteader: Address = Address::generate(&env);
 
-    mine_client.discover_mine(&admin, &asset_address);
+    farm_client.homestead(&homesteader, &asset_address);
 
-    let miner_1: Address = Address::generate(&env);
-    let miner_2: Address = Address::generate(&env);
-    let miner_3: Address = Address::generate(&env);
-    let miner_4: Address = Address::generate(&env);
+    let farmer_1: Address = Address::generate(&env);
+    let farmer_2: Address = Address::generate(&env);
+    let farmer_3: Address = Address::generate(&env);
+    let farmer_4: Address = Address::generate(&env);
 
     let amount_1 = 1_0000000;
     let amount_2 = 0_0001000;
     let amount_3 = 0;
     let amount_4 = 0_1000000;
 
-    asset_admin.mint(&miner_1, &amount_1);
-    asset_admin.mint(&miner_2, &amount_2);
-    asset_admin.mint(&miner_3, &amount_3);
-    asset_admin.mint(&miner_4, &amount_4);
+    asset_homesteader.mint(&farmer_1, &amount_1);
+    asset_homesteader.mint(&farmer_2, &amount_2);
+    asset_homesteader.mint(&farmer_3, &amount_3);
+    asset_homesteader.mint(&farmer_4, &amount_4);
 
-    mine_client.get_pail(&miner_1, &amount_1);
-    mine_client.get_pail(&miner_2, &amount_2);
-    mine_client.get_pail(&miner_3, &amount_3);
-    mine_client.get_pail(&miner_4, &amount_4);
+    farm_client.plant(&farmer_1, &amount_1);
+    farm_client.plant(&farmer_2, &amount_2);
+    farm_client.plant(&farmer_3, &amount_3);
+    farm_client.plant(&farmer_4, &amount_4);
 
     let mut index: Option<u32> = None;
     let mut block: Option<Block> = None;
 
-    env.as_contract(&mine_address, || {
+    env.as_contract(&farm_address, || {
         index = env
             .storage()
             .instance()
-            .get::<Storage, u32>(&Storage::MineIndex);
+            .get::<Storage, u32>(&Storage::FarmIndex);
         block = env
             .storage()
             .temporary()
@@ -82,7 +82,7 @@ fn test() {
     println!("{:?}", block);
     print!("\n");
 
-    let (nonce_0, hash_0) = find_nonce_and_hash(&env, &index, &block.entropy, &miner_1, 0);
+    let (nonce_0, hash_0) = find_nonce_and_hash(&env, &index, &block.entropy, &farmer_1, 0);
 
     let (nonce_1, hash_1) = (
         101569923u128,
@@ -125,19 +125,19 @@ fn test() {
         ),
     );
 
-    println!("{:?}", miner_1.clone().to_xdr(&env));
+    println!("{:?}", farmer_1.clone().to_xdr(&env));
 
-    mine_client.get_kale(&miner_1, &hash_0, &nonce_0); // 0 zeros
-    mine_client.get_kale(&miner_2, &hash_2, &nonce_2); // 7 zeros
-    mine_client.get_kale(&miner_3, &hash_3, &nonce_3); // 8 zeros
-    mine_client.get_kale(&miner_4, &hash_4, &nonce_4); // 9 zeros
+    farm_client.work(&farmer_1, &hash_0, &nonce_0); // 0 zeros
+    farm_client.work(&farmer_2, &hash_2, &nonce_2); // 7 zeros
+    farm_client.work(&farmer_3, &hash_3, &nonce_3); // 8 zeros
+    farm_client.work(&farmer_4, &hash_4, &nonce_4); // 9 zeros
 
     // Should be able to update for a higher zero count
-    mine_client.get_kale(&miner_1, &hash_1, &nonce_1); // 6 zeros
+    farm_client.work(&farmer_1, &hash_1, &nonce_1); // 6 zeros
 
     // Should not be able to update for a lower zero count
-    let err = mine_client
-        .try_get_kale(&miner_1, &hash_0, &nonce_0)
+    let err = farm_client
+        .try_work(&farmer_1, &hash_0, &nonce_0)
         .unwrap_err()
         .unwrap();
 
@@ -145,39 +145,39 @@ fn test() {
 
     env.ledger().set_timestamp(env.ledger().timestamp() + 60);
 
-    mine_client.get_pail(&miner_1, &0);
+    farm_client.plant(&farmer_1, &0);
 
-    mine_client.claim_kale(&miner_1, &index);
-    mine_client.claim_kale(&miner_2, &index);
-    mine_client.claim_kale(&miner_3, &index);
-    mine_client.claim_kale(&miner_4, &index);
+    farm_client.harvest(&farmer_1, &index);
+    farm_client.harvest(&farmer_2, &index);
+    farm_client.harvest(&farmer_3, &index);
+    farm_client.harvest(&farmer_4, &index);
 
     println!(
-        "miner 1 profit: {:?}",
-        asset_client.balance(&miner_1) - amount_1
+        "farmer 1 profit: {:?}",
+        asset_client.balance(&farmer_1) - amount_1
     );
     println!(
-        "miner 2 profit: {:?}",
-        asset_client.balance(&miner_2) - amount_2
+        "farmer 2 profit: {:?}",
+        asset_client.balance(&farmer_2) - amount_2
     );
     println!(
-        "miner 3 profit: {:?}",
-        asset_client.balance(&miner_3) - amount_3
+        "farmer 3 profit: {:?}",
+        asset_client.balance(&farmer_3) - amount_3
     );
     println!(
-        "miner 4 profit: {:?}",
-        asset_client.balance(&miner_4) - amount_4
+        "farmer 4 profit: {:?}",
+        asset_client.balance(&farmer_4) - amount_4
     );
     print!("\n");
 
     let mut index: Option<u32> = None;
     let mut block: Option<Block> = None;
 
-    env.as_contract(&mine_address, || {
+    env.as_contract(&farm_address, || {
         index = env
             .storage()
             .instance()
-            .get::<Storage, u32>(&Storage::MineIndex);
+            .get::<Storage, u32>(&Storage::FarmIndex);
 
         block = env
             .storage()
