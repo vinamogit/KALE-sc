@@ -13,11 +13,6 @@ use crate::{
     MineContractTrait, BLOCK_REWARD, MINER_EXPONENT,
 };
 
-// TODO add more comments
-// TODO add more tests
-// TODO clean up errors
-// TODO switch to garden theme vs mining theme
-
 #[contract]
 pub struct MineContract;
 
@@ -34,7 +29,7 @@ impl MineContractTrait for MineContract {
             index: 0,
             admin,
             token,
-            nuked: false,
+            paused: false,
         };
         let entropy = BytesN::from_array(&env, &[0; 32]);
         let block = Block {
@@ -62,6 +57,10 @@ impl MineContractTrait for MineContract {
         let mut mine =
             get_mine(&env).unwrap_or_else(|| panic_with_error!(&env, &Errors::MineNotFound));
 
+        if mine.paused {
+            panic_with_error!(&env, &Errors::MineIsPaused);
+        }
+
         let mut block = get_block(&env, mine.index)
             .unwrap_or_else(|| panic_with_error!(&env, &Errors::BlockNotFound));
 
@@ -84,9 +83,10 @@ impl MineContractTrait for MineContract {
             panic_with_error!(&env, &Errors::AlreadyHasPail);
         }
 
-        // NOTE: we allow passing zeros but zeros further down the stack will cause issues
-        // So either A) we should enforce requiring a > 0 value
-        // or B) set the min value to 1 (which will cause the interesting side affect of being able to "free" mint 1 stroop of value)
+        // NOTE consider adding a zero_count commitment to the pail vs just a stake amount
+        // This would ensure folks couldn't run a lot of initial get_kale's for low zero counts as they tried to find a highest
+        // I think initially though I want to try this version and see what happens
+
         set_pail(&env, miner.clone(), mine.index, amount);
 
         block.pool += amount as u64;
@@ -104,10 +104,6 @@ impl MineContractTrait for MineContract {
         miner.require_auth();
 
         let mine = get_mine(&env).unwrap_or_else(|| panic_with_error!(&env, &Errors::MineNotFound));
-
-        if mine.nuked {
-            panic_with_error!(&env, &Errors::TheMineWasNuked);
-        }
 
         let mut block = get_block(&env, mine.index)
             .unwrap_or_else(|| panic_with_error!(&env, &Errors::BlockNotFound));
@@ -222,17 +218,28 @@ impl MineContractTrait for MineContract {
         extend_instance_ttl(&env);
     }
 
-    fn fkin_nuke_it(env: Env) {
+    fn pause(env: Env) {
         let mut mine =
             get_mine(&env).unwrap_or_else(|| panic_with_error!(&env, &Errors::MineNotFound));
 
-        if mine.nuked {
-            panic_with_error!(&env, &Errors::TheMineWasNuked);
+        if mine.paused {
+            panic_with_error!(&env, &Errors::MineIsPaused);
         }
 
         mine.admin.require_auth();
 
-        mine.nuked = true;
+        mine.paused = true;
+
+        set_mine(&env, &mine);
+    }
+
+    fn unpause(env: Env) {
+        let mut mine =
+            get_mine(&env).unwrap_or_else(|| panic_with_error!(&env, &Errors::MineNotFound));
+
+        mine.admin.require_auth();
+
+        mine.paused = false;
 
         set_mine(&env, &mine);
     }

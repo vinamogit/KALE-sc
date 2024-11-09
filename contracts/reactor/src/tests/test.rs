@@ -14,6 +14,7 @@ use soroban_sdk::{
     token, Address, BytesN, Env,
 };
 
+// TODO add more tests
 // TODO write test utils
 
 #[test]
@@ -45,7 +46,7 @@ fn test() {
 
     let amount_1 = 1_0000000;
     let amount_2 = 0_0001000;
-    let amount_3 = 0; // 0_2500000;
+    let amount_3 = 0;
     let amount_4 = 0_1000000;
 
     token_admin.mint(&miner_1, &amount_1);

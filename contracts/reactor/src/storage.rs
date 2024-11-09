@@ -55,6 +55,9 @@ pub fn get_pail(env: &Env, miner: Address, index: u64) -> Option<i128> {
 pub fn set_pail(env: &Env, miner: Address, index: u64, amount: i128) {
     let pail_key = StorageKeys::Pail(miner, index);
 
+    // NOTE: we allow passing zeros but zeros further down the stack will cause issues
+    // So either A) we should enforce requiring a > 0 value
+    // or B) set the min value to 1 (which will cause the interesting side affect of being able to "free" mint 1 stroop of value)
     env.storage()
         .temporary()
         .set::<StorageKeys, i128>(&pail_key, &amount.max(1));

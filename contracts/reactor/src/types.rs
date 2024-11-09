@@ -6,7 +6,7 @@ pub struct Mine {
     pub index: u64,
     pub admin: Address,
     pub token: Address,
-    pub nuked: bool,
+    pub paused: bool,
 }
 
 #[contracttype]

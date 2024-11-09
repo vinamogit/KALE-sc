@@ -12,6 +12,9 @@ pub const MINER_EXPONENT: u64 = 8; // Higher value gives more weight to zero_cou
 pub const BLOCK_REWARD: u64 = 1_0000000;
 pub const WEEK_OF_LEDGERS: u32 = 60 * 60 * 24 / 5 * 7;
 
+// TODO add more comments
+// TODO switch to garden theme vs mining theme
+
 pub trait MineContractTrait {
     fn discover(env: Env, admin: Address, token: Address);
 
@@ -23,5 +26,7 @@ pub trait MineContractTrait {
 
     fn upgrade(env: Env, hash: BytesN<32>);
 
-    fn fkin_nuke_it(env: Env);
+    fn pause(env: Env);
+
+    fn unpause(env: Env);
 }

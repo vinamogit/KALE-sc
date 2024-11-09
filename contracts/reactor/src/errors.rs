@@ -1,5 +1,7 @@
 use soroban_sdk::contracterror;
 
+// TODO clean up errors
+
 #[contracterror]
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Errors {
@@ -7,7 +9,7 @@ pub enum Errors {
     MineNotFound = 2,
     PailAmountTooLow = 3,
     AlreadyHasPail = 4,
-    TheMineWasNuked = 5,
+    MineIsPaused = 5,
     HashIsInvalid = 6,
     BlockNotFound = 7,
     TooSoonToClaim = 8,
