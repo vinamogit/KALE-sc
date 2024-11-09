@@ -4,10 +4,10 @@ use std::{print, println};
 extern crate std;
 
 use crate::{
-    contract::{MineContract, MineContractClient},
     errors::Errors,
     tests::utils::find_nonce_and_hash,
     types::{Block, Mine, StorageKeys},
+    MineKalepailContract, MineKalepailContractClient,
 };
 use soroban_sdk::{
     testutils::{Address as _, EnvTestConfig, Ledger},
@@ -27,8 +27,8 @@ fn test() {
 
     env.mock_all_auths();
 
-    let mine_address: Address = env.register_contract(None, MineContract);
-    let mine_client = MineContractClient::new(&env, &mine_address);
+    let mine_address: Address = env.register_contract(None, MineKalepailContract);
+    let mine_client = MineKalepailContractClient::new(&env, &mine_address);
 
     let token_sac = env.register_stellar_asset_contract_v2(mine_address.clone());
     let token_address = token_sac.address();
@@ -37,7 +37,7 @@ fn test() {
 
     let admin: Address = Address::generate(&env);
 
-    mine_client.discover(&admin, &token_address);
+    mine_client.discover_mine(&admin, &token_address);
 
     let miner_1: Address = Address::generate(&env);
     let miner_2: Address = Address::generate(&env);
@@ -143,10 +143,10 @@ fn test() {
 
     mine_client.get_pail(&miner_1, &0);
 
-    mine_client.claim(&miner_1, &mine.index);
-    mine_client.claim(&miner_2, &mine.index);
-    mine_client.claim(&miner_3, &mine.index);
-    mine_client.claim(&miner_4, &mine.index);
+    mine_client.claim_kale(&miner_1, &mine.index);
+    mine_client.claim_kale(&miner_2, &mine.index);
+    mine_client.claim_kale(&miner_3, &mine.index);
+    mine_client.claim_kale(&miner_4, &mine.index);
 
     println!(
         "miner 1 profit: {:?}",
@@ -187,6 +187,3 @@ fn test() {
     println!("{:?}", mine);
     println!("{:?}", block);
 }
-
-// TEST update get_kale entry with new zero value
-// TEST what happens if you update with a lower zero value (should probably error, or just pick the higher one)

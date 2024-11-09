@@ -3,12 +3,13 @@
 use std::println;
 extern crate std;
 
-use crate::contract::MineContract;
 use ed25519_dalek::Keypair;
 use soroban_fixed_point_math::FixedPoint;
 use soroban_sdk::{xdr::ToXdr, Address, Bytes, BytesN, Env};
 use stellar_strkey::{ed25519, Strkey};
 use tiny_keccak::{Hasher, Keccak};
+
+use crate::MineKalepailContract;
 
 pub fn find_nonce_and_hash(
     env: &Env,
@@ -48,7 +49,7 @@ pub fn find_nonce_and_hash(
 fn test_address_lengths() {
     let env: Env = Env::default();
 
-    let mine_address: Address = env.register_contract(None, MineContract);
+    let mine_address: Address = env.register_contract(None, MineKalepailContract);
 
     let ed25519_keypair = Keypair::from_bytes(&[
         149, 154, 40, 132, 13, 234, 167, 87, 182, 44, 152, 45, 242, 179, 187, 17, 139, 106, 49, 85,

@@ -1,52 +1,18 @@
 use soroban_fixed_point_math::SorobanFixedPoint;
-use soroban_sdk::{
-    contract, contractimpl, panic_with_error, token, xdr::ToXdr, Address, Bytes, BytesN, Env,
-};
+use soroban_sdk::{contractimpl, panic_with_error, token, xdr::ToXdr, Address, Bytes, BytesN, Env};
 
 use crate::{
     errors::Errors,
     storage::{
-        extend_instance_ttl, get_block, get_kail, get_mine, get_pail, has_mine, has_pail,
-        remove_kail, remove_pail, set_block, set_kail, set_mine, set_pail,
+        extend_instance_ttl, get_block, get_kail, get_mine, get_pail, has_pail, remove_kail,
+        remove_pail, set_block, set_kail, set_mine, set_pail,
     },
-    types::{Block, Mine},
-    MineContractTrait, BLOCK_REWARD, MINER_EXPONENT,
+    types::Block,
+    KalePailTrait, MineKalepailContract, MineKalepailContractClient, BLOCK_REWARD, MINER_EXPONENT,
 };
 
-#[contract]
-pub struct MineContract;
-
 #[contractimpl]
-impl MineContractTrait for MineContract {
-    fn discover(env: Env, admin: Address, token: Address) {
-        admin.require_auth();
-
-        if has_mine(&env) {
-            panic_with_error!(&env, &Errors::AlreadyDiscovered);
-        }
-
-        let mine = Mine {
-            index: 0,
-            admin,
-            token,
-            paused: false,
-        };
-        let entropy = BytesN::from_array(&env, &[0; 32]);
-        let block = Block {
-            timestamp: 0,
-            zeros: 0,
-            entropy: entropy.clone(),
-            next_entropy: entropy,
-            pool: 0,
-            claimed_pool: 0,
-        };
-
-        set_mine(&env, &mine);
-        set_block(&env, mine.index, &block);
-
-        extend_instance_ttl(&env);
-    }
-
+impl KalePailTrait for MineKalepailContract {
     fn get_pail(env: Env, miner: Address, amount: i128) {
         miner.require_auth();
 
@@ -167,7 +133,7 @@ impl MineContractTrait for MineContract {
         extend_instance_ttl(&env);
     }
 
-    fn claim(env: Env, miner: Address, index: u64) {
+    fn claim_kale(env: Env, miner: Address, index: u64) {
         let mine = get_mine(&env).unwrap_or_else(|| panic_with_error!(&env, &Errors::MineNotFound));
 
         if index >= mine.index {
@@ -206,41 +172,5 @@ impl MineContractTrait for MineContract {
         token::StellarAssetClient::new(&env, &mine.token).mint(&miner, &reward);
 
         extend_instance_ttl(&env);
-    }
-
-    fn upgrade(env: Env, hash: BytesN<32>) {
-        let mine = get_mine(&env).unwrap_or_else(|| panic_with_error!(&env, &Errors::MineNotFound));
-
-        mine.admin.require_auth();
-
-        env.deployer().update_current_contract_wasm(hash);
-
-        extend_instance_ttl(&env);
-    }
-
-    fn pause(env: Env) {
-        let mut mine =
-            get_mine(&env).unwrap_or_else(|| panic_with_error!(&env, &Errors::MineNotFound));
-
-        if mine.paused {
-            panic_with_error!(&env, &Errors::MineIsPaused);
-        }
-
-        mine.admin.require_auth();
-
-        mine.paused = true;
-
-        set_mine(&env, &mine);
-    }
-
-    fn unpause(env: Env) {
-        let mut mine =
-            get_mine(&env).unwrap_or_else(|| panic_with_error!(&env, &Errors::MineNotFound));
-
-        mine.admin.require_auth();
-
-        mine.paused = false;
-
-        set_mine(&env, &mine);
     }
 }
