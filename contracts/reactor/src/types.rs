@@ -3,9 +3,9 @@ use soroban_sdk::{contracttype, Address, BytesN};
 #[contracttype]
 #[derive(Clone, Debug, PartialEq)]
 pub struct Mine {
-    pub index: u64,
+    pub index: u32,
     pub admin: Address,
-    pub token: Address,
+    pub asset: Address,
     pub paused: bool,
 }
 
@@ -13,18 +13,17 @@ pub struct Mine {
 #[derive(Clone, Debug, PartialEq)]
 pub struct Block {
     pub timestamp: u64,
-    pub zeros: u64,
     pub entropy: BytesN<32>,
     pub next_entropy: BytesN<32>,
     pub pool: u64,
     pub claimed_pool: u64,
+    pub pow_zeros: u64,
 }
 
 #[contracttype]
 #[derive(Clone, Debug, PartialEq)]
-pub enum StorageKeys {
+pub enum Storage {
     Mine,
-    Block(u64),
-    Pail(Address, u64), // miner, index : (stake_i128)
-    Kale(Address, u64), // miner, index : (zero_count_u32)
+    Block(u32),
+    Pail(Address, u32), // miner, index : (stake_i128, Option<zero_count_u32>)
 }

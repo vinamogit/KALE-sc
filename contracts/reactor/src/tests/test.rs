@@ -6,12 +6,14 @@ extern crate std;
 use crate::{
     errors::Errors,
     tests::utils::find_nonce_and_hash,
-    types::{Block, Mine, StorageKeys},
+    types::{Block, Mine, Storage},
     MineKalepailContract, MineKalepailContractClient,
 };
 use soroban_sdk::{
     testutils::{Address as _, EnvTestConfig, Ledger},
-    token, Address, BytesN, Env,
+    token,
+    xdr::ToXdr,
+    Address, BytesN, Env,
 };
 
 // TODO add more tests
@@ -30,14 +32,14 @@ fn test() {
     let mine_address: Address = env.register_contract(None, MineKalepailContract);
     let mine_client = MineKalepailContractClient::new(&env, &mine_address);
 
-    let token_sac = env.register_stellar_asset_contract_v2(mine_address.clone());
-    let token_address = token_sac.address();
-    let token_admin = token::StellarAssetClient::new(&env, &token_address);
-    let token_client = token::Client::new(&env, &token_address);
+    let asset_sac = env.register_stellar_asset_contract_v2(mine_address.clone());
+    let asset_address = asset_sac.address();
+    let asset_admin = token::StellarAssetClient::new(&env, &asset_address);
+    let asset_client = token::Client::new(&env, &asset_address);
 
     let admin: Address = Address::generate(&env);
 
-    mine_client.discover_mine(&admin, &token_address);
+    mine_client.discover_mine(&admin, &asset_address);
 
     let miner_1: Address = Address::generate(&env);
     let miner_2: Address = Address::generate(&env);
@@ -49,10 +51,10 @@ fn test() {
     let amount_3 = 0;
     let amount_4 = 0_1000000;
 
-    token_admin.mint(&miner_1, &amount_1);
-    token_admin.mint(&miner_2, &amount_2);
-    token_admin.mint(&miner_3, &amount_3);
-    token_admin.mint(&miner_4, &amount_4);
+    asset_admin.mint(&miner_1, &amount_1);
+    asset_admin.mint(&miner_2, &amount_2);
+    asset_admin.mint(&miner_3, &amount_3);
+    asset_admin.mint(&miner_4, &amount_4);
 
     mine_client.get_pail(&miner_1, &amount_1);
     mine_client.get_pail(&miner_2, &amount_2);
@@ -66,11 +68,11 @@ fn test() {
         mine = env
             .storage()
             .instance()
-            .get::<StorageKeys, Mine>(&StorageKeys::Mine);
+            .get::<Storage, Mine>(&Storage::Mine);
         block = env
             .storage()
             .temporary()
-            .get::<StorageKeys, Block>(&StorageKeys::Block(mine.clone().unwrap().index));
+            .get::<Storage, Block>(&Storage::Block(mine.clone().unwrap().index));
     });
 
     let mine = mine.unwrap();
@@ -83,45 +85,47 @@ fn test() {
     let (nonce_0, hash_0) = find_nonce_and_hash(&env, &mine.index, &block.entropy, &miner_1, 0);
 
     let (nonce_1, hash_1) = (
-        69873866u128,
+        101569923u128,
         BytesN::<32>::from_array(
             &env,
-            &hex::decode("000000c0fb5b3274139a65cc1130a60dbea02bd8862d5509a0627bf8c7af83be")
+            &hex::decode("000000c49e20bcfd1499b7710243e161a4a55c046fdd81b5590f412a4c72ba7a")
                 .unwrap()
                 .try_into()
                 .unwrap(),
         ),
     );
     let (nonce_2, hash_2) = (
-        1987939534u128,
+        146422264u128,
         BytesN::<32>::from_array(
             &env,
-            &hex::decode("0000000ea28174bd83a8e0bec227b82fa4adb1ff3d68e2e8d0f032f5d74d8a0e")
+            &hex::decode("0000000a048c6a47e70d4d470e39a340f6f34c4113dc32fa0595465304b23f29")
                 .unwrap()
                 .try_into()
                 .unwrap(),
         ),
     );
     let (nonce_3, hash_3) = (
-        9282405811u128,
+        1603654064u128,
         BytesN::<32>::from_array(
             &env,
-            &hex::decode("00000000c02b6d900f1209addb04dc625f72c438ae55e2c43e016e9b696546c3")
+            &hex::decode("00000000f9997ad594257fe86a5410ab36e96f4d2a04eed577b9fe8aba6f5193")
                 .unwrap()
                 .try_into()
                 .unwrap(),
         ),
     );
     let (nonce_4, hash_4) = (
-        220351956843u128,
+        23177611072u128,
         BytesN::<32>::from_array(
             &env,
-            &hex::decode("0000000008817a9487f2c2117cd748ce07b889fa12f1a659edd532ee5ba1ce57")
+            &hex::decode("000000000f29081bcb654599fd9cc083ca662cf1b5c421433909a7c0abc985e3")
                 .unwrap()
                 .try_into()
                 .unwrap(),
         ),
     );
+
+    println!("{:?}", miner_1.clone().to_xdr(&env));
 
     mine_client.get_kale(&miner_1, &hash_0, &nonce_0); // 0 zeros
     mine_client.get_kale(&miner_2, &hash_2, &nonce_2); // 7 zeros
@@ -150,19 +154,19 @@ fn test() {
 
     println!(
         "miner 1 profit: {:?}",
-        token_client.balance(&miner_1) - amount_1
+        asset_client.balance(&miner_1) - amount_1
     );
     println!(
         "miner 2 profit: {:?}",
-        token_client.balance(&miner_2) - amount_2
+        asset_client.balance(&miner_2) - amount_2
     );
     println!(
         "miner 3 profit: {:?}",
-        token_client.balance(&miner_3) - amount_3
+        asset_client.balance(&miner_3) - amount_3
     );
     println!(
         "miner 4 profit: {:?}",
-        token_client.balance(&miner_4) - amount_4
+        asset_client.balance(&miner_4) - amount_4
     );
     print!("\n");
 
@@ -173,12 +177,12 @@ fn test() {
         mine = env
             .storage()
             .instance()
-            .get::<StorageKeys, Mine>(&StorageKeys::Mine);
+            .get::<Storage, Mine>(&Storage::Mine);
 
         block = env
             .storage()
             .temporary()
-            .get::<StorageKeys, Block>(&StorageKeys::Block(mine.clone().unwrap().index));
+            .get::<Storage, Block>(&Storage::Block(mine.clone().unwrap().index));
     });
 
     let mine = mine.unwrap();

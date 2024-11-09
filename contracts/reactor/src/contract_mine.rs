@@ -1,39 +1,33 @@
-use soroban_sdk::{contractimpl, panic_with_error, Address, BytesN, Env};
+use soroban_sdk::{contractimpl, panic_with_error, token, Address, BytesN, Env};
 
 use crate::{
     errors::Errors,
-    storage::{extend_instance_ttl, get_mine, has_mine, set_block, set_mine},
-    types::{Block, Mine},
+    storage::{extend_instance_ttl, get_mine, has_mine, set_mine},
+    types::Mine,
     MineContractTrait, MineKalepailContract, MineKalepailContractClient,
 };
 
 #[contractimpl]
 impl MineContractTrait for MineKalepailContract {
-    fn discover_mine(env: Env, admin: Address, token: Address) {
+    fn discover_mine(env: Env, admin: Address, asset: Address) {
         admin.require_auth();
 
         if has_mine(&env) {
             panic_with_error!(&env, &Errors::AlreadyDiscovered);
         }
 
+        if token::StellarAssetClient::new(&env, &asset).admin() != env.current_contract_address() {
+            panic_with_error!(&env, &Errors::AssetAdminMismatch);
+        }
+
         let mine = Mine {
             index: 0,
             admin,
-            token,
+            asset,
             paused: false,
-        };
-        let entropy = BytesN::from_array(&env, &[0; 32]);
-        let block = Block {
-            timestamp: 0,
-            zeros: 0,
-            entropy: entropy.clone(),
-            next_entropy: entropy,
-            pool: 0,
-            claimed_pool: 0,
         };
 
         set_mine(&env, &mine);
-        set_block(&env, mine.index, &block);
 
         extend_instance_ttl(&env);
     }
@@ -72,5 +66,7 @@ impl MineContractTrait for MineKalepailContract {
         mine.paused = false;
 
         set_mine(&env, &mine);
+
+        extend_instance_ttl(&env);
     }
 }

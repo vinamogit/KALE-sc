@@ -16,4 +16,5 @@ pub enum Errors {
     KaleNotFound = 9,
     PailNotFound = 10,
     ZeroCountTooLow = 11,
+    AssetAdminMismatch = 12,
 }

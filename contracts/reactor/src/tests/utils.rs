@@ -13,7 +13,7 @@ use crate::MineKalepailContract;
 
 pub fn find_nonce_and_hash(
     env: &Env,
-    index: &u64,
+    index: &u32,
     entropy: &BytesN<32>,
     miner: &Address,
     zero_count: u32,
@@ -124,7 +124,7 @@ fn test_integer_nth_root() {
     println!("{:?}", res);
 }
 
-fn generate_keccak(hash_b: &mut [u8; 88], nonce: &u128) -> [u8; 32] {
+fn generate_keccak(hash_b: &mut [u8; 84], nonce: &u128) -> [u8; 32] {
     let mut hash = [0u8; 32];
 
     hash_b[8..8 + 16].copy_from_slice(&nonce.to_be_bytes());
@@ -138,12 +138,12 @@ fn generate_keccak(hash_b: &mut [u8; 88], nonce: &u128) -> [u8; 32] {
 
 fn generate_hash(
     env: &Env,
-    index: &u64,
+    index: &u32,
     nonce: &u128,
     entropy: &BytesN<32>,
     miner: &Address,
-) -> [u8; 88] {
-    let mut hash_b = [0u8; 88];
+) -> [u8; 84] {
+    let mut hash_b = [0u8; 84];
 
     let mut miner_b = [0u8; 32];
     let miner_bytes = miner.clone().to_xdr(&env);
@@ -151,10 +151,10 @@ fn generate_hash(
         .slice(miner_bytes.len() - 32..)
         .copy_into_slice(&mut miner_b);
 
-    hash_b[0..8].copy_from_slice(&index.to_be_bytes());
-    hash_b[8..8 + 16].copy_from_slice(&nonce.to_be_bytes());
-    hash_b[24..24 + 32].copy_from_slice(&entropy.to_array());
-    hash_b[56..56 + 32].copy_from_slice(&miner_b);
+    hash_b[..4].copy_from_slice(&index.to_be_bytes());
+    hash_b[4..4 + 16].copy_from_slice(&nonce.to_be_bytes());
+    hash_b[20..20 + 32].copy_from_slice(&entropy.to_array());
+    hash_b[52..].copy_from_slice(&miner_b);
 
     return hash_b;
 }
