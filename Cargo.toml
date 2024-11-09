@@ -9,6 +9,8 @@ soroban-sdk = "21.7.6"
 soroban-fixed-point-math = "1.2.0"
 tiny-keccak = { version = "2.0.2" }
 hex = "0.4.3"
+ed25519-dalek = { version = "1.0.1" }
+stellar-strkey = { version = "0.0.11" }
 
 [profile.release]
 opt-level = "z"

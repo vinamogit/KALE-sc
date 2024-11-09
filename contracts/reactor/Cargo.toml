@@ -8,14 +8,13 @@ publish = false
 crate-type = ["cdylib"]
 doctest = false
 
-[features]
-testutils = []
-
 [dependencies]
 soroban-sdk = { workspace = true }
 soroban-fixed-point-math = { workspace = true }
-tiny-keccak = { workspace = true, features = ["keccak"] }
-hex = { workspace = true }
 
 [dev-dependencies]
 soroban-sdk = { workspace = true, features = ["testutils"] }
+tiny-keccak = { workspace = true, features = ["keccak"] }
+hex = { workspace = true }
+stellar-strkey = { workspace = true }
+ed25519-dalek = { workspace = true }
