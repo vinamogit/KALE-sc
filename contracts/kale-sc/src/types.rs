@@ -5,8 +5,8 @@ use soroban_sdk::{contracttype, Address, BytesN};
 pub struct Block {
     pub timestamp: u64,
     pub entropy: BytesN<32>,
-    pub pool: u64,
-    pub claimed_pool: u64,
+    pub staked: u64,
+    pub reclaimed: u64,
     pub pow_zeros: u64,
 }
 

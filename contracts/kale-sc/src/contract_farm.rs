@@ -35,8 +35,8 @@ impl FarmTrait for Contract {
             None => Block {
                 timestamp: env.ledger().timestamp(),
                 entropy,
-                pool: 0,
-                claimed_pool: 0,
+                staked: 0,
+                reclaimed: 0,
                 pow_zeros: 0,
             },
             Some(mut block) => {
@@ -45,8 +45,8 @@ impl FarmTrait for Contract {
                     block = Block {
                         timestamp: env.ledger().timestamp(),
                         entropy,
-                        pool: 0,
-                        claimed_pool: 0,
+                        staked: 0,
+                        reclaimed: 0,
                         pow_zeros: 0,
                     };
 
@@ -62,7 +62,7 @@ impl FarmTrait for Contract {
             panic_with_error!(&env, &Errors::AlreadyHasPail);
         }
 
-        block.pool += amount as u64;
+        block.staked += amount as u64;
 
         if amount > 0 {
             token::Client::new(&env, &asset).transfer(&farmer, &asset, &amount);
@@ -114,7 +114,7 @@ impl FarmTrait for Contract {
             }
             None => {
                 block.pow_zeros = block.pow_zeros + (ZEROS_EXPONENT.pow(zero_count) * pail as u64);
-                block.claimed_pool += pail as u64;
+                block.reclaimed += pail as u64;
             }
         }
 
@@ -141,8 +141,8 @@ impl FarmTrait for Contract {
             panic_with_error!(&env, &Errors::KaleNotFound);
         }
 
-        let full_block_reward = BLOCK_REWARD + block.pool;
-        let actual_block_reward = (full_block_reward - block.claimed_pool) as i128;
+        let full_block_reward = BLOCK_REWARD + block.staked;
+        let actual_block_reward = (full_block_reward - block.reclaimed) as i128;
 
         let kale = kale.unwrap();
         let reward = (ZEROS_EXPONENT.pow(kale) as i128 * pail).fixed_div_floor(
