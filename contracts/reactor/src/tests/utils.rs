@@ -11,32 +11,32 @@ pub fn find_nonce_and_hash(
     entropy: &BytesN<32>,
     miner: &Address,
     zero_count: u32,
-)
-// -> (u128, BytesN<32>)
-{
+) -> (u128, BytesN<32>) {
     let mut nonce = 0;
     let mut hash_b = generate_hash(env, index, &nonce, entropy, miner);
 
-    println!("{:?}", hash_b);
+    // println!("{:?}", hash_b);
 
-    // loop {
-    //     let hash = generate_keccak(&mut hash_b, &nonce);
-    //     let mut leading_zeros = 0;
+    loop {
+        let hash = generate_keccak(&mut hash_b, &nonce);
+        let mut leading_zeros = 0;
 
-    //     for byte in hash.clone() {
-    //         if byte == 0 {
-    //             leading_zeros += 1;
-    //         } else {
-    //             break;
-    //         }
-    //     }
+        for byte in hash {
+            if byte == 0 {
+                leading_zeros += 2;
+            } else {
+                // Use leading_zeros to count bits, convert to hex digits
+                leading_zeros += byte.leading_zeros() / 4;
+                break;
+            }
+        }
 
-    //     if leading_zeros >= zero_count {
-    //         return (nonce, BytesN::from_array(env, &hash));
-    //     }
+        if leading_zeros >= zero_count {
+            return (nonce, BytesN::from_array(env, &hash));
+        }
 
-    //     nonce += 1;
-    // }
+        nonce += 1;
+    }
 }
 
 #[test]
@@ -121,7 +121,7 @@ fn test_integer_nth_root() {
 fn generate_keccak(hash_b: &mut [u8; 88], nonce: &u128) -> [u8; 32] {
     let mut hash = [0u8; 32];
 
-    hash_b[88..88 + 16].copy_from_slice(&nonce.to_be_bytes());
+    hash_b[8..8 + 16].copy_from_slice(&nonce.to_be_bytes());
 
     let mut keccak = Keccak::v256();
     keccak.update(hash_b);
@@ -145,11 +145,8 @@ fn generate_hash(
         .slice(miner_bytes.len() - 32..)
         .copy_into_slice(&mut miner_b);
 
-    let index_b = index.to_be_bytes();
-    let nonce_b = nonce.to_be_bytes();
-
-    hash_b[0..8].copy_from_slice(&index_b);
-    hash_b[8..8 + 16].copy_from_slice(&nonce_b);
+    hash_b[0..8].copy_from_slice(&index.to_be_bytes());
+    hash_b[8..8 + 16].copy_from_slice(&nonce.to_be_bytes());
     hash_b[24..24 + 32].copy_from_slice(&entropy.to_array());
     hash_b[56..56 + 32].copy_from_slice(&miner_b);
 

@@ -18,7 +18,7 @@ pub enum Errors {
     PailAmountTooLow = 3,
     AlreadyHasPail = 4,
     TheMineWasNuked = 5,
-    ProvidedHashIsInvalid = 6,
+    HashIsInvalid = 6,
     BlockNotFound = 7,
     TooSoonToClaim = 8,
     KaleNotFound = 9,
@@ -69,7 +69,8 @@ pub trait MineContractTrait {
     fn fkin_nuke_it(env: Env);
 }
 
-const MINER_EXPONENT: u64 = 8;
+const MINER_EXPONENT: u64 = 8; // Higher value gives more weight to zero_count
+const BLOCK_REWARD: u64 = 1_0000000;
 
 #[contract]
 pub struct MineContract;
@@ -206,7 +207,7 @@ impl MineContractTrait for MineContract {
             .to_bytes();
 
         if hash != generated_hash {
-            panic_with_error!(&env, &Errors::ProvidedHashIsInvalid);
+            panic_with_error!(&env, &Errors::HashIsInvalid);
         }
 
         block.next_entropy = generated_hash;
@@ -222,11 +223,6 @@ impl MineContractTrait for MineContract {
             }
         }
 
-        // TODO can we allow zero_count to be 0?
-        if zero_count <= 0 {
-            panic_with_error!(&env, &Errors::ZeroCountTooLow);
-        }
-
         let pail = env
             .storage()
             .temporary()
@@ -235,12 +231,12 @@ impl MineContractTrait for MineContract {
 
         let kale_key = StorageKeys::Kale(miner.clone(), mine.index);
 
-        // TODO zero_counts should probably be a bit more valuable in that going from e.g. 7 to 8 is a increase by a factor of 16
-        // so going from `100 * 7 = 700` should be significantly less than `100 * 8 = 800`
-        // you could Math.pow the zero by 16 but I think that would be a little too much so maybe 8 or 4 to start
-
         match env.storage().temporary().get::<StorageKeys, u32>(&kale_key) {
             Some(prev_zero_count) => {
+                if zero_count <= prev_zero_count {
+                    panic_with_error!(&env, &Errors::ZeroCountTooLow);
+                }
+
                 block.zeros = block.zeros + (MINER_EXPONENT.pow(zero_count) * pail as u64)
                     - (MINER_EXPONENT.pow(prev_zero_count) * pail as u64);
             }
@@ -287,8 +283,7 @@ impl MineContractTrait for MineContract {
             .get::<StorageKeys, u32>(&kale_key)
             .unwrap_or_else(|| panic_with_error!(&env, &Errors::KaleNotFound));
 
-        let block_reward = 1_0000000;
-        let full_block_reward = block_reward + block.pool;
+        let full_block_reward = BLOCK_REWARD + block.pool;
         let actual_block_reward = (full_block_reward - block.claimed_pool) as i128;
 
         env.storage().temporary().remove(&kale_key);
