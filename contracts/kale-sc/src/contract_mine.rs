@@ -21,6 +21,7 @@ impl MineContractTrait for MineKalepailContract {
         if token::StellarAssetClient::new(&env, &asset).admin() != env.current_contract_address() {
             panic_with_error!(&env, &Errors::AssetAdminMismatch);
         }
+        // NOTE could put an else here that changed the asset admin but I think I'd rather than happen external to this fn
 
         set_mine_admin(&env, &admin);
         set_mine_asset(&env, &asset);

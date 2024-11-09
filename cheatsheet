@@ -1,20 +1,22 @@
-# Discover Mine
-stellar contract invoke --id CCKBHXBXG64JRXWCFYX4KS3QCVXFM2U52QUEJWCQCXC4H5UH56JER3BK --network testnet --source default -- discover_mine --admin default --asset CDPNUQSNEYRC43ZOPJLKHUAPPUMMEO7IMKHH62TKVSBEKZGSXBHK2OFE
-
-# Upgrade Mine
-stellar contract invoke --id CCKBHXBXG64JRXWCFYX4KS3QCVXFM2U52QUEJWCQCXC4H5UH56JER3BK --network testnet --source default -- upgrade_mine --hash 46802d8ab9a64c77b56d870f0c78f37c0133f9701af2b8007d6f2a75f91c745c
-
 # Deploy SAC
 stellar contract asset deploy --asset KALEv2:GBF7WP5EJYB2SSZPXFFIVGGDRYPHF7JFHBW3SH2JSVXZKNPSCM53V7FJ --network testnet --source default
 
 # Update SAC Admin
-stellar contract invoke --id CDPNUQSNEYRC43ZOPJLKHUAPPUMMEO7IMKHH62TKVSBEKZGSXBHK2OFE --network testnet --source SBURL5MGNJIVQKIWHX4JZIIEYRCMEVQTR6ZRRWTDHGYUDUZO4AVZBWSX -- set_admin --new_admin CCKBHXBXG64JRXWCFYX4KS3QCVXFM2U52QUEJWCQCXC4H5UH56JER3BK
+stellar contract invoke --id CBUFOFYUEPAPCKI2HE2KM24DN22LMFFR4MY6X77CNQLS6OAADRDFIWTE --network testnet --source SBURL5MGNJIVQKIWHX4JZIIEYRCMEVQTR6ZRRWTDHGYUDUZO4AVZBWSX -- set_admin --new_admin CCETM7JZP6IUFTYZUOHI6OF3O4I4HXB3LCPISFSFCAEBCWGEOBLRSOBL
+
+# (add trustline to user)
+
+# Discover Mine
+stellar contract invoke --id CCETM7JZP6IUFTYZUOHI6OF3O4I4HXB3LCPISFSFCAEBCWGEOBLRSOBL --network testnet --source default -- discover_mine --admin default --asset CBUFOFYUEPAPCKI2HE2KM24DN22LMFFR4MY6X77CNQLS6OAADRDFIWTE
+
+# Upgrade Mine
+stellar contract invoke --id CCETM7JZP6IUFTYZUOHI6OF3O4I4HXB3LCPISFSFCAEBCWGEOBLRSOBL --network testnet --source default -- upgrade_mine --hash 46802d8ab9a64c77b56d870f0c78f37c0133f9701af2b8007d6f2a75f91c745c
 
 # Get Pail
-stellar contract invoke --id CCKBHXBXG64JRXWCFYX4KS3QCVXFM2U52QUEJWCQCXC4H5UH56JER3BK --network testnet --source default -- get_pail --amount 0 --miner default
+stellar contract invoke --id CCETM7JZP6IUFTYZUOHI6OF3O4I4HXB3LCPISFSFCAEBCWGEOBLRSOBL --network testnet --source default -- get_pail --amount 0 --miner default
 
 # Get Kail
-stellar contract invoke --id CCKBHXBXG64JRXWCFYX4KS3QCVXFM2U52QUEJWCQCXC4H5UH56JER3BK --network testnet --source default -- get_kale --miner default --nonce 746435291 --hash 0000000f98c4740b898b6584be9e9217f7137d28d45dccbf64c9abac8aafbfb9
+stellar contract invoke --id CCETM7JZP6IUFTYZUOHI6OF3O4I4HXB3LCPISFSFCAEBCWGEOBLRSOBL --network testnet --source default -- get_kale --miner default --nonce 746435291 --hash 0000000f98c4740b898b6584be9e9217f7137d28d45dccbf64c9abac8aafbfb9
 
 # Claim KALE
-stellar contract invoke --id CCKBHXBXG64JRXWCFYX4KS3QCVXFM2U52QUEJWCQCXC4H5UH56JER3BK --network testnet --source default -- claim_kale --index 0 --miner default
+stellar contract invoke --id CCETM7JZP6IUFTYZUOHI6OF3O4I4HXB3LCPISFSFCAEBCWGEOBLRSOBL --network testnet --source default -- claim_kale --index 0 --miner default
