@@ -17,4 +17,5 @@ pub enum Errors {
     PailNotFound = 10,
     ZeroCountTooLow = 11,
     AssetAdminMismatch = 12,
+    MineIsNotPaused = 13,
 }

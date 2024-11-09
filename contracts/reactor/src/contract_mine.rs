@@ -2,8 +2,10 @@ use soroban_sdk::{contractimpl, panic_with_error, token, Address, BytesN, Env};
 
 use crate::{
     errors::Errors,
-    storage::{extend_instance_ttl, get_mine, has_mine, set_mine},
-    types::Mine,
+    storage::{
+        extend_instance_ttl, get_mine_admin, get_mine_paused, has_mine_admin, set_mine_admin,
+        set_mine_asset, set_mine_paused,
+    },
     MineContractTrait, MineKalepailContract, MineKalepailContractClient,
 };
 
@@ -12,7 +14,7 @@ impl MineContractTrait for MineKalepailContract {
     fn discover_mine(env: Env, admin: Address, asset: Address) {
         admin.require_auth();
 
-        if has_mine(&env) {
+        if has_mine_admin(&env) {
             panic_with_error!(&env, &Errors::AlreadyDiscovered);
         }
 
@@ -20,22 +22,16 @@ impl MineContractTrait for MineKalepailContract {
             panic_with_error!(&env, &Errors::AssetAdminMismatch);
         }
 
-        let mine = Mine {
-            index: 0,
-            admin,
-            asset,
-            paused: false,
-        };
-
-        set_mine(&env, &mine);
+        set_mine_admin(&env, &admin);
+        set_mine_asset(&env, &asset);
 
         extend_instance_ttl(&env);
     }
 
     fn upgrade_mine(env: Env, hash: BytesN<32>) {
-        let mine = get_mine(&env).unwrap_or_else(|| panic_with_error!(&env, &Errors::MineNotFound));
+        let admin = get_mine_admin(&env);
 
-        mine.admin.require_auth();
+        admin.require_auth();
 
         env.deployer().update_current_contract_wasm(hash);
 
@@ -43,29 +39,31 @@ impl MineContractTrait for MineKalepailContract {
     }
 
     fn pause_mine(env: Env) {
-        let mut mine =
-            get_mine(&env).unwrap_or_else(|| panic_with_error!(&env, &Errors::MineNotFound));
+        let paused = get_mine_paused(&env);
 
-        if mine.paused {
+        if paused {
             panic_with_error!(&env, &Errors::MineIsPaused);
         }
 
-        mine.admin.require_auth();
+        let admin = get_mine_admin(&env);
 
-        mine.paused = true;
+        admin.require_auth();
 
-        set_mine(&env, &mine);
+        set_mine_paused(&env, true);
     }
 
     fn unpause_mine(env: Env) {
-        let mut mine =
-            get_mine(&env).unwrap_or_else(|| panic_with_error!(&env, &Errors::MineNotFound));
+        let paused = get_mine_paused(&env);
 
-        mine.admin.require_auth();
+        if paused {
+            panic_with_error!(&env, &Errors::MineIsNotPaused);
+        }
 
-        mine.paused = false;
+        let admin = get_mine_admin(&env);
 
-        set_mine(&env, &mine);
+        admin.require_auth();
+
+        set_mine_paused(&env, false);
 
         extend_instance_ttl(&env);
     }

@@ -4,8 +4,9 @@ use soroban_sdk::{contractimpl, panic_with_error, token, xdr::ToXdr, Address, By
 use crate::{
     errors::Errors,
     storage::{
-        extend_instance_ttl, get_block, get_mine, get_pail, has_pail, remove_pail, set_block,
-        set_mine, set_pail,
+        bump_mine_index, extend_instance_ttl, get_block, get_mine_asset, get_mine_entropy,
+        get_mine_index, get_mine_paused, get_pail, has_pail, remove_pail, set_block,
+        set_mine_entropy, set_pail,
     },
     types::Block,
     KalepailTrait, MineKalepailContract, MineKalepailContractClient, BLOCK_REWARD, MINER_EXPONENT,
@@ -20,43 +21,43 @@ impl KalepailTrait for MineKalepailContract {
             panic_with_error!(&env, &Errors::PailAmountTooLow);
         }
 
-        let mut mine =
-            get_mine(&env).unwrap_or_else(|| panic_with_error!(&env, &Errors::MineNotFound));
+        let asset = get_mine_asset(&env);
+        let mut index = get_mine_index(&env);
+        let entropy = get_mine_entropy(&env);
+        let paused = get_mine_paused(&env);
 
-        if mine.paused {
+        if paused {
             panic_with_error!(&env, &Errors::MineIsPaused);
         }
 
-        let mut block = get_block(&env, mine.index).unwrap_or_else(|| {
-            let entropy = BytesN::from_array(&env, &[0; 32]);
-
-            Block {
+        let mut block = match get_block(&env, index) {
+            // genesis or evicted
+            None => Block {
                 timestamp: env.ledger().timestamp(),
-                entropy: entropy.clone(),
-                next_entropy: entropy,
+                entropy,
                 pool: 0,
                 claimed_pool: 0,
                 pow_zeros: 0,
+            },
+            Some(mut block) => {
+                // if the block is >= 1 minute old, we need to create a new one
+                if env.ledger().timestamp() >= block.timestamp + 60 {
+                    block = Block {
+                        timestamp: env.ledger().timestamp(),
+                        entropy,
+                        pool: 0,
+                        claimed_pool: 0,
+                        pow_zeros: 0,
+                    };
+
+                    index = bump_mine_index(&env, index);
+                }
+
+                block
             }
-        });
+        };
 
-        // TODO always true for genesis block, adjust so we can use the genesis block
-        if env.ledger().timestamp() >= block.timestamp + 60 {
-            mine.index += 1;
-
-            block = Block {
-                timestamp: env.ledger().timestamp(),
-                entropy: block.next_entropy,
-                next_entropy: BytesN::from_array(&env, &[0; 32]),
-                pool: 0,
-                claimed_pool: 0,
-                pow_zeros: 0,
-            };
-
-            set_mine(&env, &mine);
-        }
-
-        if has_pail(&env, miner.clone(), mine.index) {
+        if has_pail(&env, miner.clone(), index) {
             panic_with_error!(&env, &Errors::AlreadyHasPail);
         }
 
@@ -64,36 +65,32 @@ impl KalepailTrait for MineKalepailContract {
         // This would ensure folks couldn't run a lot of initial get_kale's for low zero counts as they tried to find a highest
         // I think initially though I want to try this version and see what happens
 
-        set_pail(&env, miner.clone(), mine.index, amount, None);
+        set_pail(&env, miner.clone(), index, amount, None);
 
         block.pool += amount as u64;
 
-        set_block(&env, mine.index, &block);
+        set_block(&env, index, &block);
 
         if amount > 0 {
-            token::Client::new(&env, &mine.asset).transfer(&miner, &mine.asset, &amount);
+            token::Client::new(&env, &asset).transfer(&miner, &asset, &amount);
         }
 
         extend_instance_ttl(&env);
     }
 
     fn get_kale(env: Env, miner: Address, hash: BytesN<32>, nonce: u128) {
-        // TODO do we really need to require auth here?
-        // someone else could `get_kale` for you and the "worst case" is they could submit higher zero hashes on your behalf
-        miner.require_auth();
+        // No auth_require here so others can call this function on the `miner`'s behalf
 
-        let mine = get_mine(&env).unwrap_or_else(|| panic_with_error!(&env, &Errors::MineNotFound));
+        let index = get_mine_index(&env);
 
-        let mut block = get_block(&env, mine.index)
+        let mut block = get_block(&env, index)
             .unwrap_or_else(|| panic_with_error!(&env, &Errors::BlockNotFound));
 
-        let generated_hash = generate_hash(&env, &miner, &mine.index, &nonce, &block.entropy);
+        let generated_hash = generate_hash(&env, &miner, &index, &nonce, &block.entropy);
 
         if hash != generated_hash {
             panic_with_error!(&env, &Errors::HashIsInvalid);
         }
-
-        block.next_entropy = generated_hash;
 
         let mut zero_count = 0;
 
@@ -106,7 +103,7 @@ impl KalepailTrait for MineKalepailContract {
             }
         }
 
-        let (pail, kale) = get_pail(&env, miner.clone(), mine.index)
+        let (pail, kale) = get_pail(&env, miner.clone(), index)
             .unwrap_or_else(|| panic_with_error!(&env, &Errors::PailNotFound));
 
         match kale {
@@ -124,16 +121,18 @@ impl KalepailTrait for MineKalepailContract {
             }
         }
 
-        set_pail(&env, miner, mine.index, pail, Some(zero_count));
-        set_block(&env, mine.index, &block);
+        set_pail(&env, miner, index, pail, Some(zero_count));
+        set_block(&env, index, &block);
+        set_mine_entropy(&env, &generated_hash);
 
         extend_instance_ttl(&env);
     }
 
     fn claim_kale(env: Env, miner: Address, index: u32) {
-        let mine = get_mine(&env).unwrap_or_else(|| panic_with_error!(&env, &Errors::MineNotFound));
+        let asset = get_mine_asset(&env);
+        let mine_index = get_mine_index(&env);
 
-        if index >= mine.index {
+        if index >= mine_index {
             panic_with_error!(&env, &Errors::TooSoonToClaim);
         }
 
@@ -167,7 +166,7 @@ impl KalepailTrait for MineKalepailContract {
             &actual_block_reward,
         ) + pail;
 
-        token::StellarAssetClient::new(&env, &mine.asset).mint(&miner, &reward);
+        token::StellarAssetClient::new(&env, &asset).mint(&miner, &reward);
 
         extend_instance_ttl(&env);
     }

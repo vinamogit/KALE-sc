@@ -15,6 +15,7 @@ pub const WEEK_OF_LEDGERS: u32 = 60 * 60 * 24 / 5 * 7;
 
 // TODO add more comments
 // TODO switch to garden theme vs mining theme
+// TODO organize code for all gets at the top and all sets at the bottom
 
 #[contract]
 pub struct MineKalepailContract;

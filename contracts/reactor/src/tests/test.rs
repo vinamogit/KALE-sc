@@ -6,7 +6,7 @@ extern crate std;
 use crate::{
     errors::Errors,
     tests::utils::find_nonce_and_hash,
-    types::{Block, Mine, Storage},
+    types::{Block, Storage},
     MineKalepailContract, MineKalepailContractClient,
 };
 use soroban_sdk::{
@@ -61,28 +61,28 @@ fn test() {
     mine_client.get_pail(&miner_3, &amount_3);
     mine_client.get_pail(&miner_4, &amount_4);
 
-    let mut mine: Option<Mine> = None;
+    let mut index: Option<u32> = None;
     let mut block: Option<Block> = None;
 
     env.as_contract(&mine_address, || {
-        mine = env
+        index = env
             .storage()
             .instance()
-            .get::<Storage, Mine>(&Storage::Mine);
+            .get::<Storage, u32>(&Storage::MineIndex);
         block = env
             .storage()
             .temporary()
-            .get::<Storage, Block>(&Storage::Block(mine.clone().unwrap().index));
+            .get::<Storage, Block>(&Storage::Block(index.unwrap_or(0)));
     });
 
-    let mine = mine.unwrap();
+    let index = index.unwrap_or(0);
     let block = block.unwrap();
 
-    println!("{:?}", mine);
+    println!("{:?}", index);
     println!("{:?}", block);
     print!("\n");
 
-    let (nonce_0, hash_0) = find_nonce_and_hash(&env, &mine.index, &block.entropy, &miner_1, 0);
+    let (nonce_0, hash_0) = find_nonce_and_hash(&env, &index, &block.entropy, &miner_1, 0);
 
     let (nonce_1, hash_1) = (
         101569923u128,
@@ -147,10 +147,10 @@ fn test() {
 
     mine_client.get_pail(&miner_1, &0);
 
-    mine_client.claim_kale(&miner_1, &mine.index);
-    mine_client.claim_kale(&miner_2, &mine.index);
-    mine_client.claim_kale(&miner_3, &mine.index);
-    mine_client.claim_kale(&miner_4, &mine.index);
+    mine_client.claim_kale(&miner_1, &index);
+    mine_client.claim_kale(&miner_2, &index);
+    mine_client.claim_kale(&miner_3, &index);
+    mine_client.claim_kale(&miner_4, &index);
 
     println!(
         "miner 1 profit: {:?}",
@@ -170,24 +170,24 @@ fn test() {
     );
     print!("\n");
 
-    let mut mine: Option<Mine> = None;
+    let mut index: Option<u32> = None;
     let mut block: Option<Block> = None;
 
     env.as_contract(&mine_address, || {
-        mine = env
+        index = env
             .storage()
             .instance()
-            .get::<Storage, Mine>(&Storage::Mine);
+            .get::<Storage, u32>(&Storage::MineIndex);
 
         block = env
             .storage()
             .temporary()
-            .get::<Storage, Block>(&Storage::Block(mine.clone().unwrap().index));
+            .get::<Storage, Block>(&Storage::Block(index.unwrap()));
     });
 
-    let mine = mine.unwrap();
+    let index = index.unwrap();
     let block = block.unwrap();
 
-    println!("{:?}", mine);
+    println!("{:?}", index);
     println!("{:?}", block);
 }

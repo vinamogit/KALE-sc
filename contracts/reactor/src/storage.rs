@@ -1,7 +1,8 @@
-use soroban_sdk::{Address, Env};
+use soroban_sdk::{panic_with_error, Address, BytesN, Env};
 
 use crate::{
-    types::{Block, Mine, Storage},
+    errors::Errors,
+    types::{Block, Storage},
     WEEK_OF_LEDGERS,
 };
 
@@ -13,18 +14,71 @@ pub fn extend_instance_ttl(env: &Env) {
         .extend_ttl(max_ttl - WEEK_OF_LEDGERS, max_ttl);
 }
 
-pub fn has_mine(env: &Env) -> bool {
-    env.storage().instance().has::<Storage>(&Storage::Mine)
+pub fn has_mine_admin(env: &Env) -> bool {
+    env.storage().instance().has::<Storage>(&Storage::MineAdmin)
 }
-pub fn get_mine(env: &Env) -> Option<Mine> {
+pub fn get_mine_admin(env: &Env) -> Address {
     env.storage()
         .instance()
-        .get::<Storage, Mine>(&Storage::Mine)
+        .get::<Storage, Address>(&Storage::MineAdmin)
+        .unwrap_or_else(|| panic_with_error!(&env, &Errors::MineNotFound))
 }
-pub fn set_mine(env: &Env, mine: &Mine) {
+pub fn set_mine_admin(env: &Env, admin: &Address) {
     env.storage()
         .instance()
-        .set::<Storage, Mine>(&Storage::Mine, mine);
+        .set::<Storage, Address>(&Storage::MineAdmin, admin);
+}
+
+pub fn get_mine_asset(env: &Env) -> Address {
+    env.storage()
+        .instance()
+        .get::<Storage, Address>(&Storage::MineAsset)
+        .unwrap_or_else(|| panic_with_error!(&env, &Errors::MineNotFound))
+}
+pub fn set_mine_asset(env: &Env, asset: &Address) {
+    env.storage()
+        .instance()
+        .set::<Storage, Address>(&Storage::MineAsset, asset);
+}
+
+pub fn get_mine_index(env: &Env) -> u32 {
+    env.storage()
+        .instance()
+        .get::<Storage, u32>(&Storage::MineIndex)
+        .unwrap_or(0)
+}
+pub fn bump_mine_index(env: &Env, mut current_mine_index: u32) -> u32 {
+    current_mine_index += 1;
+
+    env.storage()
+        .instance()
+        .set::<Storage, u32>(&Storage::MineIndex, &current_mine_index);
+
+    current_mine_index
+}
+
+pub fn get_mine_entropy(env: &Env) -> BytesN<32> {
+    env.storage()
+        .instance()
+        .get::<Storage, BytesN<32>>(&Storage::MineEntropy)
+        .unwrap_or(BytesN::from_array(&env, &[0; 32]))
+}
+pub fn set_mine_entropy(env: &Env, entropy: &BytesN<32>) {
+    env.storage()
+        .instance()
+        .set::<Storage, BytesN<32>>(&Storage::MineEntropy, entropy);
+}
+
+pub fn get_mine_paused(env: &Env) -> bool {
+    env.storage()
+        .instance()
+        .get::<Storage, bool>(&Storage::MinePaused)
+        .unwrap_or(false)
+}
+pub fn set_mine_paused(env: &Env, paused: bool) {
+    env.storage()
+        .instance()
+        .set::<Storage, bool>(&Storage::MinePaused, &paused);
 }
 
 pub fn get_block(env: &Env, index: u32) -> Option<Block> {
