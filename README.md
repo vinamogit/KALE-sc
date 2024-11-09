@@ -3,8 +3,8 @@
 ![](./assets/farm.webp)
 
 <details closed>
-<summary>**Origins: A Short Story**</summary>
-> TODO
+<summary><strong>Origins: A Short Story</strong></summary>
+TODO
 </details>
 
 ## A Proof of <i>Team</i>work Stellar Asset
