@@ -86,7 +86,7 @@ impl FarmTrait for Contract {
             .unwrap_or_else(|| panic_with_error!(&env, &Errors::BlockNotFound));
         let (pail, kale) = get_pail(&env, farmer.clone(), index)
             .unwrap_or_else(|| panic_with_error!(&env, &Errors::PailNotFound));
-        let generated_hash = generate_hash(&env, &farmer, &index, &nonce, &block.entropy);
+        let generated_hash = generate_hash(&env, &index, &nonce, &block.entropy, &farmer);
 
         if hash != generated_hash {
             panic_with_error!(&env, &Errors::HashIsInvalid);
@@ -109,11 +109,11 @@ impl FarmTrait for Contract {
                     panic_with_error!(&env, &Errors::ZeroCountTooLow);
                 }
 
-                block.pow_zeros = block.pow_zeros + (ZEROS_EXPONENT.pow(zero_count) * pail as u64)
-                    - (ZEROS_EXPONENT.pow(prev_zero_count) * pail as u64);
+                block.pow_zeros = block.pow_zeros + (ZEROS_EXPONENT.pow(zero_count) * pail)
+                    - (ZEROS_EXPONENT.pow(prev_zero_count) * pail);
             }
             None => {
-                block.pow_zeros = block.pow_zeros + (ZEROS_EXPONENT.pow(zero_count) * pail as u64);
+                block.pow_zeros = block.pow_zeros + (ZEROS_EXPONENT.pow(zero_count) * pail);
                 block.reclaimed += pail as u64;
             }
         }
@@ -142,13 +142,13 @@ impl FarmTrait for Contract {
         }
 
         let full_block_reward = BLOCK_REWARD + block.staked;
-        let actual_block_reward = (full_block_reward - block.reclaimed) as i128;
+        let actual_block_reward = full_block_reward - block.reclaimed;
 
         let kale = kale.unwrap();
-        let reward = (ZEROS_EXPONENT.pow(kale) as i128 * pail).fixed_div_floor(
+        let reward = (ZEROS_EXPONENT.pow(kale) * pail).fixed_div_floor(
             &env,
-            &(block.pow_zeros as i128),
-            &actual_block_reward,
+            &(block.pow_zeros),
+            &(actual_block_reward as i128),
         ) + pail;
 
         token::StellarAssetClient::new(&env, &asset).mint(&farmer, &reward);
@@ -161,15 +161,15 @@ impl FarmTrait for Contract {
 
 fn generate_hash(
     env: &Env,
-    farmer: &Address,
     index: &u32,
     nonce: &u128,
     entropy: &BytesN<32>,
+    farmer: &Address,
 ) -> BytesN<32> {
     let mut hash_b = [0u8; 84];
 
     let mut farmer_b = [0u8; 32];
-    let farmer_bytes = farmer.clone().to_xdr(env);
+    let farmer_bytes = farmer.to_xdr(env);
     farmer_bytes
         .slice(farmer_bytes.len() - 32..)
         .copy_into_slice(&mut farmer_b);

@@ -17,7 +17,13 @@ TODO
 Network | `TESTNET` | `MAINNET`
 --- | --- | --- 
 Contract | `CCETM7JZP6IUFTYZUOHI6OF3O4I4HXB3LCPISFSFCAEBCWGEOBLRSOBL` | `NA` 
-Asset | `KALE:CBUFOFYUEPAPCKI2HE2KM24DN22LMFFR4MY6X77CNQLS6OAADRDFIWTE` | `KALE:NA`
+Asset | `CBUFOFYUEPAPCKI2HE2KM24DN22LMFFR4MY6X77CNQLS6OAADRDFIWTE` | `NA`
+
+## Some Unique Characteristics 
+* This is not a winner takes all mining contract. The block reward is distributed to all working farmers based of contributions both to a staking step and a working step.
+* The block reward amount will vary up from a `BLOCK_REWARD` base to include any unclaimed `KALE` staked by farmers who were unable to to call `work` for the block.
+* Block rewards must be claimed passively after the next block has its first `plant` invocation.
+* All storage other than a few protocol items is temporary. This keeps things cheap af but also introduces an interesting "risk" mechanic in that if you're tardy to claim your rewards you might just miss out entirely. Don't let those veggies rot!
 
 ## The Mining Process
 
@@ -26,11 +32,75 @@ In order to successfully farm `KALE` into your account you must carry out 3 step
 2. Next input your proof of work by calling the `work` function.
 3. Finally you can harvest your `KALE` by calling the `harvest` function.
 
-### `plant`
+Let's look at each of these steps in more detail.
 
-### `work`
+### 1. `plant`
+Step one of all bountiful harvests is planting. In our case planting is the staking step. In order to both commit your interest in a block and to multiply your bounty you must stake some amount of `KALE`. Please note that a stake of `0` is permitted and is in fact the only way to get started farming in The KALEpail Project.
 
-### `harvest`
+The amount you stake will be used as a multiplier against the number of prefix zeros you submit in your `hash` during the `work` step. The math breaks down pretty simply as follows:
+
+`ZEROS_EXPONENT.pow(<number of zeros>) * <stake amount>`
+or for you JS folks out there: `Math.pow(ZEROS_EXPONENT, <number of zeros>) * <stake amount>`.
+
+So for example if your stake was 1 `KALE` (`amount=1_0000000`) and you mined a hash with 7 prefix zeros and the `ZEROS_EXPONENT` was 4 your total contribution to receiving your share of the harvest would be `4.pow(7) * 1_0000000` or `163_840_000_000`.
+
+The aim of this basic mathematical algorithm is to try and strike a balance between staking power and hashing power where neither is too overly preferred against the other. As time progresses I expect we'll need to continue to refine both the stake and hash weights in order to find the appropriate balance of power between OG farmers, power users and new players.
+
+### 2. `work`
+
+Once you've successfully ~~staked your claim~~ planted your garden you can move on to the actual mining step. The goal here is to attempt to generate a valid hash with the maximum number of prefix zeros. The more zeros you can generate the more `KALE` you'll be able to harvest in the end.
+
+Hashes will be verified via the following function:
+
+```rust
+fn generate_hash(
+    env: &Env,
+    index: &u32,
+    nonce: &u128,
+    entropy: &BytesN<32>,
+    farmer: &Address,
+) -> BytesN<32> {
+    let mut hash_b = [0u8; 84];
+
+    let mut farmer_b = [0u8; 32];
+    let farmer_bytes = farmer.to_xdr(env);
+    farmer_bytes
+        .slice(farmer_bytes.len() - 32..)
+        .copy_into_slice(&mut farmer_b);
+
+    hash_b[..4].copy_from_slice(&index.to_be_bytes());
+    hash_b[4..4 + 16].copy_from_slice(&nonce.to_be_bytes());
+    hash_b[20..20 + 32].copy_from_slice(&entropy.to_array());
+    hash_b[52..].copy_from_slice(&farmer_b);
+
+    env.crypto()
+        .keccak256(&Bytes::from_array(env, &hash_b))
+        .to_bytes()
+}
+```
+
+Couple things to note:
+
+1. We only take the last 32 bytes of the `farmer` address. This allows us to keep the hash generation process as small, compact and cheap as possible while still supporting both G- and C- address `farmer`s. (G- addresses are 44 bytes while C- addresses are just 40 when deriving from their raw XDR)
+2. The nonce is a `u128` so 16 bytes long. That's pretty long.
+3. Entropy is the last hash of the previous block. You can get it as the instance storage `FarmEntropy` value. (Worth noting you can also get the `index` value from the instance storage `FarmIndex`)
+
+I've tried to keep the hash as tight and simple as possible to make it easier and faster to build hashing algorithms without having to fiddle with XDR headers.
+
+Note you can update your submission if you happen to find a hash with more zeros than your previous submission just keep in mind transaction submissions aren't free so choose your timing wisely. Submit too soon and you might find a larger zero prefix later. Submit too late and you might miss the block entirely and forfeit your stake.
+
+### 3. `harvest`
+
+Once you've put in a solid block's work you can finally harvest your `KALE`. The `harvest` function will calculate your share of the block reward based on your contribution to the block and the total contributions of all other hard working farmers.
+
+The total available reward will be the base `BLOCK_REWARD` + any stake that wasn't reclaimed during a subsequent `work` invocation.
+
+You are always guaranteed to receive back _at least_ as much as you placed into your stake assuming you were able to submit a valid hash for the block in the `work` step.
+
+Keep in mind block's are stored as temporary entries so you either need to act fast to claim your rewards or bump the entry's ttl to keep it from being evicted. Once it's gone, it, your rewards, and your stake are all gone with it.
+
+## Protips
+* Of `plant`, `work` and `harvest` only `plant` calls `require_auth` on the `farmer` argument. This would allow other accounts to call `work` and `harvest` on behalf of the farmer. This could be useful in joint mining pools where a service could create a separate contract or service which could collect on a portion of `KALE` or some other asset in exchange for performing the `work` and `harvest` functions for other farmers.
 
 ## Attribution
 The KALEpail project wouldn't have been possible without the initial innovation of the [FCM project](https://github.com/Stellar-Corium/FCM-sc) or the subsequent community efforts spearheaded by [Frederic 경진 Rezeau](https://github.com/FredericRezeau/fcm-miner).

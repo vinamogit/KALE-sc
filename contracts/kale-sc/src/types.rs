@@ -7,7 +7,7 @@ pub struct Block {
     pub entropy: BytesN<32>,
     pub staked: u64,
     pub reclaimed: u64,
-    pub pow_zeros: u64,
+    pub pow_zeros: i128,
 }
 
 #[contracttype]
