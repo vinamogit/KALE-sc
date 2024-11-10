@@ -107,9 +107,13 @@ Keep in mind block's are stored as temporary entries so you either need to act f
     * Build a service that harvests other folks blocks for them (for a fee)
     * Build a service that bumps ttl on blocks (for a fee) to ensure there's time to claim rewards.
 
-## Attribution
-The KALEpail project wouldn't have been possible without the initial innovation of the [FCM project](https://github.com/Stellar-Corium/FCM-sc) or the subsequent community efforts spearheaded by [Frederic 경진 Rezeau](https://github.com/FredericRezeau/fcm-miner).
+## Get A Free Launchtube Token
+Want to submit mainnet transactions for free? Use [Launchtube](https://github.com/stellar/launchtube)! I'll be handing out 100 XLM API tokens to anyone who asks in our [Discord channel](https://discord.com/channels/761985725453303838/1304843790351204403).
 
 ## Join The Discussion
-
 Come chat it up in the [`KALE` forum discussion](https://discord.com/channels/761985725453303838/1304843790351204403) on the Stellar Global Discord server.
+
+---
+
+## Attribution
+The KALEpail project wouldn't have been possible without the initial innovation of the [FCM project](https://github.com/Stellar-Corium/FCM-sc) or the subsequent community efforts spearheaded by [Frederic 경진 Rezeau](https://github.com/FredericRezeau/fcm-miner).
