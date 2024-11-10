@@ -9,7 +9,7 @@ use crate::{
         set_farm_entropy, set_pail,
     },
     types::Block,
-    Contract, ContractClient, FarmTrait, BLOCK_REWARD, ZEROS_EXPONENT,
+    Contract, ContractClient, FarmTrait, BLOCK_INTERVAL, BLOCK_REWARD, ZEROS_EXPONENT,
 };
 
 #[contractimpl]
@@ -41,7 +41,7 @@ impl FarmTrait for Contract {
             },
             Some(mut block) => {
                 // if the block is >= 1 minute old, we need to create a new one
-                if env.ledger().timestamp() >= block.timestamp + 60 {
+                if env.ledger().timestamp() >= block.timestamp + BLOCK_INTERVAL {
                     block = Block {
                         timestamp: env.ledger().timestamp(),
                         entropy,

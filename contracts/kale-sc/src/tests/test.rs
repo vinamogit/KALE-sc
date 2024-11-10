@@ -7,7 +7,7 @@ use crate::{
     errors::Errors,
     tests::utils::find_nonce_and_hash,
     types::{Block, Storage},
-    Contract, ContractClient,
+    Contract, ContractClient, BLOCK_INTERVAL,
 };
 use soroban_sdk::{
     testutils::{Address as _, EnvTestConfig, Ledger},
@@ -143,7 +143,8 @@ fn test() {
 
     assert_eq!(err, Errors::ZeroCountTooLow.into());
 
-    env.ledger().set_timestamp(env.ledger().timestamp() + 60);
+    env.ledger()
+        .set_timestamp(env.ledger().timestamp() + BLOCK_INTERVAL);
 
     farm_client.plant(&farmer_1, &0);
 
