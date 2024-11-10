@@ -102,6 +102,10 @@ Keep in mind block's are stored as temporary entries so you either need to act f
 
 ## Protips
 * Of `plant`, `work` and `harvest` only `plant` calls `require_auth` on the `farmer` argument. This would allow other accounts to call `work` and `harvest` on behalf of the farmer. This could be useful in joint mining pools where a service could create a separate contract or service which could collect on a portion of `KALE` or some other asset in exchange for performing the `work` and `harvest` functions for other farmers.
+* Don't like submitting two transactions for `plant` and `work`? What's keeping you from writing your own contract that submits both in the same transaction? Atm nothing, so go for it!
+* Write a harvest contract that can harvest multiple blocks at a time. Temporary ttl lasts 2 hrs atm so there’s quite a bit of headroom to bundle blocks into single super claim transactions.
+    * Build a service that harvests other folks blocks for them (for a fee)
+    * Build a service that bumps ttl on blocks (for a fee) to ensure there's time to claim rewards.
 
 ## Attribution
 The KALEpail project wouldn't have been possible without the initial innovation of the [FCM project](https://github.com/Stellar-Corium/FCM-sc) or the subsequent community efforts spearheaded by [Frederic 경진 Rezeau](https://github.com/FredericRezeau/fcm-miner).
