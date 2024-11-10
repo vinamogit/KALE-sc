@@ -20,27 +20,28 @@ Contract | `CCETM7JZP6IUFTYZUOHI6OF3O4I4HXB3LCPISFSFCAEBCWGEOBLRSOBL` | `NA`
 Asset | `CBUFOFYUEPAPCKI2HE2KM24DN22LMFFR4MY6X77CNQLS6OAADRDFIWTE` | `NA`
 
 ## Some Unique Characteristics 
-* This is not a winner takes all mining contract. The block reward is distributed to all working farmers based of contributions both to a staking step and a working step.
+* This is not a winner takes all mining contract. The block reward is distributed to all working farmers based off contributions both to a staking step and a working step.
 * The block reward amount will vary up from a `BLOCK_REWARD` base to include any unclaimed `KALE` staked by farmers who were unable to to call `work` for the block.
+* The block reward is calculated by the minute but blocks close every `BLOCK_INTERVAL` seconds. This likely will be greater than a minute to ensure an appropriate balance between blockchain load and hash difficulty distribution. Close too quickly and the blockchain could be overwhelmed with requests. Close too slowly and the hash difficulty could be too high for the average CPU miner to participate.
 * Block rewards must be claimed passively after the next block has its first `plant` invocation.
 * All storage other than a few protocol items is temporary. This keeps things cheap af but also introduces an interesting "risk" mechanic in that if you're tardy to claim your rewards you might just miss out entirely. Don't let those veggies rot!
 
 ## The Mining Process
 
-In order to successfully farm `KALE` into your account you must carry out 3 steps:
-1. Start by invoking the `plant` function.
+In order to successfully farm `KALE` into your account you must invoke 3 contract functions:
+1. Start with the `plant` staking function.
 2. Next input your proof of work by calling the `work` function.
 3. Finally you can harvest your `KALE` by calling the `harvest` function.
 
 Let's look at each of these steps in more detail.
 
 ### 1. `plant`
-Step one of all bountiful harvests is planting. In our case planting is the staking step. In order to both commit your interest in a block and to multiply your bounty you must stake some amount of `KALE`. Please note that a stake of `0` is permitted and is in fact the only way to get started farming in The KALEpail Project.
+Step one of all bountiful harvests is planting. In our case planting is the staking step. In order to both commit your interest in mining a block and to multiply your bounty you must stake some amount of `KALE`. Please note that a stake of `0` is permitted and is in fact the only way to get started farming in The KALEpail Project.
 
 The amount you stake will be used as a multiplier against the number of prefix zeros you submit in your `hash` during the `work` step. The math breaks down pretty simply as follows:
 
 `ZEROS_EXPONENT.pow(<number of zeros>) * <stake amount>`
-or for you JS folks out there: `Math.pow(ZEROS_EXPONENT, <number of zeros>) * <stake amount>`.
+or for you JS folks out there `Math.pow(ZEROS_EXPONENT, <number of zeros>) * <stake amount>`.
 
 So for example if your stake was 1 `KALE` (`amount=1_0000000`) and you mined a hash with 7 prefix zeros and the `ZEROS_EXPONENT` was 4 your total contribution to receiving your share of the harvest would be `4.pow(7) * 1_0000000` or `163_840_000_000`.
 
@@ -79,23 +80,23 @@ fn generate_hash(
 }
 ```
 
-Couple things to note:
+A couple things to note:
 
-1. We only take the last 32 bytes of the `farmer` address. This allows us to keep the hash generation process as small, compact and cheap as possible while still supporting both G- and C- address `farmer`s. (G- addresses are 44 bytes while C- addresses are just 40 when deriving from their raw XDR)
-2. The nonce is a `u128` so 16 bytes long. That's pretty long.
-3. Entropy is the last hash of the previous block. You can get it as the instance storage `FarmEntropy` value. (Worth noting you can also get the `index` value from the instance storage `FarmIndex`)
+1. We only take the last 32 bytes of the `farmer` address. This allows us to keep the hash generation process as small, compact and cheap as possible while still supporting both G- and C- `farmer` addresses. (G- addresses are 44 bytes while C- addresses are just 40 when breaking them down to their raw XDR)
+2. Entropy is the last hash of the previous block. You can get it as the instance storage `FarmEntropy` value. (Worth noting you can also get the `index` value from the instance storage `FarmIndex`)
+3. The nonce is a `u128` so 16 bytes long. That's pretty long.
 
 I've tried to keep the hash as tight and simple as possible to make it easier and faster to build hashing algorithms without having to fiddle with XDR headers.
 
-Note you can update your submission if you happen to find a hash with more zeros than your previous submission just keep in mind transaction submissions aren't free so choose your timing wisely. Submit too soon and you might find a larger zero prefix later. Submit too late and you might miss the block entirely and forfeit your stake.
+Note you can update your `work` submission if you happen to find a hash with more zeros than your previous submission just keep in mind transaction submissions aren't free (the XLM transaction submission fee) so choose your timing wisely. Submit too soon and you might find a larger zero prefix before the block closes. Submit too late and you might miss the block entirely and thus forfeit your stake.
 
 ### 3. `harvest`
 
-Once you've put in a solid block's work you can finally harvest your `KALE`. The `harvest` function will calculate your share of the block reward based on your contribution to the block and the total contributions of all other hard working farmers.
+Once you've put in a solid block's work you can finally harvest your `KALE`. The `harvest` function will calculate your share of the block reward based on your contribution to the block against the total contributions of all other hard working farmers.
 
 The total available reward will be the base `BLOCK_REWARD` + any stake that wasn't reclaimed during a subsequent `work` invocation.
 
-You are always guaranteed to receive back _at least_ as much as you placed into your stake assuming you were able to submit a valid hash for the block in the `work` step.
+You are always guaranteed to receive back _at least_ as much as you staked assuming you were able to submit a valid hash for the block in the `work` step.
 
 Keep in mind block's are stored as temporary entries so you either need to act fast to claim your rewards or bump the entry's ttl to keep it from being evicted. Once it's gone, it, your rewards, and your stake are all gone with it.
 
@@ -104,3 +105,7 @@ Keep in mind block's are stored as temporary entries so you either need to act f
 
 ## Attribution
 The KALEpail project wouldn't have been possible without the initial innovation of the [FCM project](https://github.com/Stellar-Corium/FCM-sc) or the subsequent community efforts spearheaded by [Frederic 경진 Rezeau](https://github.com/FredericRezeau/fcm-miner).
+
+## Join The Discussion
+
+Come chat it up in the [`KALE` forum discussion](https://discord.com/channels/761985725453303838/1304843790351204403) on the Stellar Global Discord server.
