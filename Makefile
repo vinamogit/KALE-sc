@@ -15,3 +15,5 @@ deploy:
 	make build
 	stellar contract deploy --wasm target/wasm32-unknown-unknown/release/kale_sc.optimized.wasm --network testnet --source default
 	
+bindings:
+	stellar contract bindings typescript --network vc --wasm target/wasm32-unknown-unknown/release/kale_sc.optimized.wasm --contract-id NIL --output-dir kale-sc-sdk --overwrite
