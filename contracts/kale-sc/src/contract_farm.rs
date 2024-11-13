@@ -125,7 +125,7 @@ impl FarmTrait for Contract {
         extend_instance_ttl(&env);
     }
 
-    fn harvest(env: Env, farmer: Address, index: u32) {
+    fn harvest(env: Env, farmer: Address, index: u32) -> i128 {
         let asset = get_farm_asset(&env);
         let farm_index = get_farm_index(&env);
         let block = get_block(&env, index)
@@ -156,6 +156,8 @@ impl FarmTrait for Contract {
         remove_pail(&env, farmer.clone(), index);
 
         extend_instance_ttl(&env);
+
+        reward
     }
 }
 

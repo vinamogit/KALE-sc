@@ -38,5 +38,5 @@ pub trait FarmTrait {
 
     fn work(env: Env, farmer: Address, hash: BytesN<32>, nonce: u128);
 
-    fn harvest(env: Env, farmer: Address, index: u32);
+    fn harvest(env: Env, farmer: Address, index: u32) -> i128;
 }
