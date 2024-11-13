@@ -84,9 +84,10 @@ fn generate_hash(
 
 A couple things to note:
 
-1. We only take the last 32 bytes of the `farmer` address. This allows us to keep the hash generation process as small, compact and cheap as possible while still supporting both G- and C- `farmer` addresses. (G- addresses are 44 bytes while C- addresses are just 40 when breaking them down to their raw XDR)
-2. Entropy is the last hash of the previous block. You can get it as the instance storage `FarmEntropy` value. (Worth noting you can also get the `index` value from the instance storage `FarmIndex`)
-3. The nonce is a `u128` so 16 bytes long. That's pretty long.
+1. You can get the `index` value from the instance storage `FarmIndex` key.
+2. The nonce is a `u128` so 16 bytes long. That's pretty long.
+3. Entropy is the `hash` value of the previous block. 
+4. We only take the last 32 bytes of the `farmer` address. This allows us to keep the hash generation process as small, compact and cheap as possible while still supporting both G- and C- `farmer` addresses. (G- addresses are 44 bytes while C- addresses are just 40 when breaking them down to their raw XDR)
 
 I've tried to keep the hash as tight and simple as possible to make it easier and faster to build hashing algorithms without having to fiddle with XDR headers.
 
@@ -102,9 +103,7 @@ You are always guaranteed to receive back _at least_ as much as you staked assum
 
 Keep in mind block's are stored as temporary entries so you either need to act fast to claim your rewards or bump the entry's ttl to keep it from being evicted. Once it's gone, it, your rewards, and your stake are all gone with it.
 
-## Available Prebuilt Miners
-* [C++ miner](https://github.com/FredericRezeau/kale-miner) [Frederic 경진 Rezeau](https://github.com/FredericRezeau)
-* [Rust miner](https://github.com/kalepail/kale-farmer) [Tyler van der Hoeven](https://github.com/kalepail)
+---
 
 ## Protips
 * Of `plant`, `work` and `harvest` only `plant` calls `require_auth` on the `farmer` argument. This would allow other accounts to call `work` and `harvest` on behalf of the farmer. This could be useful in joint mining pools where a service could create a separate contract or service which could collect on a portion of `KALE` or some other asset in exchange for performing the `work` and `harvest` functions for other farmers.
@@ -115,6 +114,10 @@ Keep in mind block's are stored as temporary entries so you either need to act f
 
 ## Get A Free Launchtube Token
 Want to submit mainnet transactions for free? Use [Launchtube](https://github.com/stellar/launchtube)! I'll be handing out 100 XLM API tokens to anyone who asks in our [Discord channel](https://discord.com/channels/761985725453303838/1304843790351204403).
+
+## Available Prebuilt Miners
+* [C++ miner](https://github.com/FredericRezeau/kale-miner) — [Frederic 경진 Rezeau](https://github.com/FredericRezeau)
+* [Rust miner](https://github.com/kalepail/kale-farmer) — [Tyler van der Hoeven](https://github.com/kalepail)
 
 ## Join The Discussion
 Come chat it up in the [`KALE` forum discussion](https://discord.com/channels/761985725453303838/1304843790351204403) on the Stellar Global Discord server.
