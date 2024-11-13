@@ -7,7 +7,7 @@
 TODO
 </details> -->
 
-## A Proof of <i>Team</i>work Stellar Asset
+## A Proof-of-<i>Team</i>work Stellar Asset
 
 > [!CAUTION]
 > This contract has not been audited nor has it been fully tested yet, take this into consideration.
