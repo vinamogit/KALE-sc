@@ -22,7 +22,6 @@ impl HomesteadTrait for Contract {
         if token::StellarAssetClient::new(&env, &asset).admin() != env.current_contract_address() {
             panic_with_error!(&env, &Errors::AssetAdminInvalid);
         }
-        // NOTE could put an else here that changed the asset admin but I think I'd rather than happen external to this fn
 
         set_farm_homesteader(&env, &farmer);
         set_farm_asset(&env, &asset);

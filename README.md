@@ -88,7 +88,7 @@ A couple things to note:
 
 I've tried to keep the hash as tight and simple as possible to make it easier and faster to build hashing algorithms without having to fiddle with XDR headers.
 
-Note you can update your `work` submission if you happen to find a hash with more zeros than your previous submission just keep in mind transaction submissions aren't free (the XLM transaction submission fee) so choose your timing wisely. Submit too soon and you might find a larger zero prefix before the block closes. Submit too late and you might miss the block entirely and thus forfeit your stake.
+Note: you can update your `work` submission if you happen to find a hash with more zeros than your previous submission just keep in mind transaction submissions aren't free (the XLM transaction submission fee) so choose your timing wisely. Submit too soon and you might find a larger zero prefix before the block closes. Submit too late and you might miss the block entirely and thus forfeit your stake.
 
 ### 3. `harvest`
 

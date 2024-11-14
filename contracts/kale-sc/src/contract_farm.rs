@@ -20,43 +20,43 @@ impl FarmTrait for Contract {
 
         let asset = get_farm_asset(&env);
         let mut index = get_farm_index(&env);
-        let mut farm_block = get_farm_block(&env).unwrap_or(generate_block(&env));
+        let mut farm_block = get_farm_block(&env).unwrap_or(empty_block(&env));
         let paused = get_farm_paused(&env);
         let mut block = match get_block(&env, index) {
             // genesis or evicted
             None => {
-                let block = Block {
-                    timestamp: env.ledger().timestamp(),
-                    min_gap: 1,
-                    min_stake: 1,
-                    min_zeros: 5,
-                    max_gap: 60,
-                    max_stake: 5_0000000,
-                    max_zeros: 9,
-                    entropy: BytesN::from_array(&env, &[0; 32]),
-                    staked_total: 0,
-                    normalized_total: 0,
-                };
-
                 // we're in an evicted scenario so the index should be bumped
                 if index > 0 {
                     bump_farm_index(&env, &mut index);
                 }
 
-                block
+                // set with some reasonable defaults
+                Block {
+                    timestamp: env.ledger().timestamp(),
+                    min_gap: 1,
+                    min_stake: 0,
+                    min_zeros: 7,
+                    max_gap: 60,
+                    max_stake: BLOCK_REWARD,
+                    max_zeros: 10,
+                    entropy: BytesN::from_array(&env, &[0; 32]),
+                    staked_total: 0,
+                    normalized_total: 0,
+                }
             }
             Some(block) => {
                 // if the block is >= BLOCK_INTERVAL old, we need to create a new one
                 if env.ledger().timestamp() >= block.timestamp + BLOCK_INTERVAL {
+                    // initialize with the values from the previous block
                     let mut block = farm_block.clone();
 
                     block.timestamp = env.ledger().timestamp();
                     block.staked_total = 0;
                     block.normalized_total = 0;
 
-                    farm_block = generate_block(&env);
-
+                    // ensure we put this after the `farm_block.clone` above
                     bump_farm_index(&env, &mut index);
+                    farm_block = empty_block(&env);
 
                     block
                 } else {
@@ -73,16 +73,13 @@ impl FarmTrait for Contract {
             panic_with_error!(&env, &Errors::PlantAmountTooLow);
         }
 
-        // NOTE must come after block discovery as the index may have been bumped
+        // must come after block discovery as the index may have been bumped
         if has_pail(&env, farmer.clone(), index) {
             panic_with_error!(&env, &Errors::PailExists);
         }
 
         block.staked_total += amount;
 
-        // NOTE: we allow passing zeros but zeros further down the stack will cause issues
-        // So either A) we should enforce requiring a > 0 value
-        // or B) set the min value to 1 (which will cause the interesting side affect of being able to "free" mint 1 stroop of value)
 
         if amount > 0 {
             token::Client::new(&env, &asset).burn(&farmer, &amount);
@@ -229,7 +226,7 @@ impl FarmTrait for Contract {
     }
 }
 
-pub fn generate_block(env: &Env) -> Block {
+pub fn empty_block(env: &Env) -> Block {
     Block {
         timestamp: env.ledger().timestamp(),
         min_gap: 0,

@@ -159,11 +159,6 @@ fn test() {
     farm_client.harvest(&farmer_3, &index);
     farm_client.harvest(&farmer_4, &index);
 
-    // farmer 1 profit: 6756720
-    // farmer 2 profit: 270
-    // farmer 3 profit: 0
-    // farmer 4 profit: 43243009
-
     println!(
         "farmer 1 profit: {:?}",
         asset_client.balance(&farmer_1) - amount_1

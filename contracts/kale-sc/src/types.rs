@@ -19,9 +19,6 @@ pub struct Block {
     pub normalized_total: i128,
 }
 
-// NOTE consider adding a zeros commitment to the Pail vs just a stake amount
-// This would ensure folks couldn't run a lot of initial `work`'s for low zero counts as they tried to find a highest
-// I think initially though I want to try this version and see what happens
 #[contracttype]
 #[derive(Clone, Debug, PartialEq)]
 pub struct Pail {
