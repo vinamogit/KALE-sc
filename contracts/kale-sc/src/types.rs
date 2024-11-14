@@ -31,10 +31,8 @@ pub struct Pail {
 #[contracttype]
 #[derive(Clone, Debug, PartialEq)]
 pub enum Storage {
-    Homesteader,    // : address
-    HomesteadAsset, // : address
-    // HomesteadBlockInterval, // : u64
-    // HomesteadBlockReward,   // : u64
+    Homesteader,        // : address
+    HomesteadAsset,     // : address
     FarmIndex,          // : u32
     FarmBlock,          // : Block
     FarmPaused,         // : bool
