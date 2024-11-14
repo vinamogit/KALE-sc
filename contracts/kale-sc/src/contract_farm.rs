@@ -80,7 +80,6 @@ impl FarmTrait for Contract {
 
         block.staked_total += amount;
 
-
         if amount > 0 {
             token::Client::new(&env, &asset).burn(&farmer, &amount);
         }
