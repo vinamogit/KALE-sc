@@ -1,3 +1,4 @@
+// use crate::ContractArgs;
 use soroban_fixed_point_math::SorobanFixedPoint;
 use soroban_sdk::{contractimpl, panic_with_error, token, xdr::ToXdr, Address, Bytes, BytesN, Env};
 
@@ -139,7 +140,7 @@ impl FarmTrait for Contract {
         }
 
         let (normalized_gap, normalized_stake, normalized_zero) =
-            run_calculations(&env, &block, gap, pail.stake, zeros);
+            generate_normalizations(&env, &block, gap, pail.stake, zeros);
 
         block.normalized_total += normalized_gap + normalized_stake + normalized_zero;
 
@@ -150,7 +151,7 @@ impl FarmTrait for Contract {
                 }
 
                 let (prev_normalized_gap, prev_normalized_stake, prev_normalized_zero) =
-                    run_calculations(&env, &block, gap, pail.stake, prev_zeros);
+                    generate_normalizations(&env, &block, gap, pail.stake, prev_zeros);
 
                 block.normalized_total -=
                     prev_normalized_gap + prev_normalized_stake + prev_normalized_zero;
@@ -210,7 +211,7 @@ impl FarmTrait for Contract {
         let zeros = zeros.unwrap();
 
         let (normalized_gap, normalized_stake, normalized_zero) =
-            run_calculations(&env, &block, gap, stake, zeros);
+            generate_normalizations(&env, &block, gap, stake, zeros);
 
         let reward = (normalized_gap + normalized_stake + normalized_zero).fixed_div_floor(
             &env,
@@ -268,7 +269,7 @@ fn generate_hash(
         .to_bytes()
 }
 
-fn run_calculations(
+fn generate_normalizations(
     env: &Env,
     block: &Block,
     gap: u32,
@@ -284,22 +285,14 @@ fn run_calculations(
         .max(block.max_zeros as i128)
         .max(1);
 
-    // println!("{:?}", block);
-    // println!("ceiling: {:?}", ceiling);
-
     let gap = gap.min(block.max_gap).max(block.min_gap);
     let stake = stake.min(block.max_stake).max(block.min_stake);
     let zeros = zeros.min(block.max_zeros).max(block.min_zeros);
 
-    // println!("gap: {:?}", gap);
-    // println!("stake: {:?}", stake);
-    // println!("zeros: {:?}", zeros);
-
-    let normalized_gap =
-        ceiling.fixed_div_floor(&env, &range_gap, &((gap - block.min_gap) as i128));
-    let normalized_stake = ceiling.fixed_div_floor(&env, &range_stake, &(stake - block.min_stake));
+    let normalized_gap = ceiling.fixed_div_floor(env, &range_gap, &((gap - block.min_gap) as i128));
+    let normalized_stake = ceiling.fixed_div_floor(env, &range_stake, &(stake - block.min_stake));
     let normalized_zero =
-        ceiling.fixed_div_floor(&env, &range_zero, &((zeros - block.min_zeros) as i128));
+        ceiling.fixed_div_floor(env, &range_zero, &((zeros - block.min_zeros) as i128));
 
     (normalized_gap, normalized_stake, normalized_zero)
 }
