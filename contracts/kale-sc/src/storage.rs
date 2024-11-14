@@ -1,4 +1,4 @@
-use soroban_sdk::{panic_with_error, Address, BytesN, Env};
+use soroban_sdk::{panic_with_error, Address, Env};
 
 use crate::{
     errors::Errors,
@@ -23,7 +23,7 @@ pub fn get_farm_homesteader(env: &Env) -> Address {
     env.storage()
         .instance()
         .get::<Storage, Address>(&Storage::Homesteader)
-        .unwrap_or_else(|| panic_with_error!(&env, &Errors::HomesteadNotFound))
+        .unwrap_or_else(|| panic_with_error!(&env, &Errors::HomesteadMissing))
 }
 pub fn set_farm_homesteader(env: &Env, homesteader: &Address) {
     env.storage()
@@ -35,7 +35,7 @@ pub fn get_farm_asset(env: &Env) -> Address {
     env.storage()
         .instance()
         .get::<Storage, Address>(&Storage::HomesteadAsset)
-        .unwrap_or_else(|| panic_with_error!(&env, &Errors::HomesteadNotFound))
+        .unwrap_or_else(|| panic_with_error!(&env, &Errors::HomesteadMissing))
 }
 pub fn set_farm_asset(env: &Env, asset: &Address) {
     env.storage()
@@ -49,26 +49,23 @@ pub fn get_farm_index(env: &Env) -> u32 {
         .get::<Storage, u32>(&Storage::FarmIndex)
         .unwrap_or(0)
 }
-pub fn bump_farm_index(env: &Env, mut current_farm_index: u32) -> u32 {
-    current_farm_index += 1;
+pub fn bump_farm_index(env: &Env, current_farm_index: &mut u32) {
+    *current_farm_index += 1;
 
     env.storage()
         .instance()
         .set::<Storage, u32>(&Storage::FarmIndex, &current_farm_index);
-
-    current_farm_index
 }
 
-pub fn get_farm_entropy(env: &Env) -> BytesN<32> {
+pub fn get_farm_block(env: &Env) -> Option<Block> {
     env.storage()
         .instance()
-        .get::<Storage, BytesN<32>>(&Storage::FarmEntropy)
-        .unwrap_or(BytesN::from_array(&env, &[0; 32]))
+        .get::<Storage, Block>(&Storage::FarmBlock)
 }
-pub fn set_farm_entropy(env: &Env, entropy: &BytesN<32>) {
+pub fn set_farm_block(env: &Env, block: &Block) {
     env.storage()
         .instance()
-        .set::<Storage, BytesN<32>>(&Storage::FarmEntropy, entropy);
+        .set::<Storage, Block>(&Storage::FarmBlock, block);
 }
 
 pub fn get_farm_paused(env: &Env) -> bool {

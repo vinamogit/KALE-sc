@@ -134,6 +134,14 @@ fn test() {
     farm_client.work(&farmer_1, &hash_0, &nonce_0); // 0 zeros
     farm_client.work(&farmer_4, &hash_4, &nonce_4); // 9 zeros
 
+    // Should not be able to update for a lower or equal zero count
+    let err = farm_client
+        .try_work(&farmer_1, &hash_0, &nonce_0)
+        .unwrap_err()
+        .unwrap();
+
+    assert_eq!(err, Errors::ZeroCountTooLow.into());
+
     // Should be able to update for a higher zero count
     farm_client.work(&farmer_1, &hash_1, &nonce_1); // 6 zeros
 
@@ -141,14 +149,6 @@ fn test() {
 
     farm_client.work(&farmer_2, &hash_2, &nonce_2); // 7 zeros
     farm_client.work(&farmer_3, &hash_3, &nonce_3); // 8 zeros
-
-    // Should not be able to update for a lower zero count
-    let err = farm_client
-        .try_work(&farmer_1, &hash_0, &nonce_0)
-        .unwrap_err()
-        .unwrap();
-
-    assert_eq!(err, Errors::ZeroCountTooLow.into());
 
     env.ledger().set_timestamp(timestamp + BLOCK_INTERVAL);
 

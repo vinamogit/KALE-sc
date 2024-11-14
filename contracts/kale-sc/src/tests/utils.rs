@@ -45,6 +45,118 @@ pub fn find_nonce_and_hash(
     }
 }
 
+fn generate_keccak(hash_b: &mut [u8; 84], nonce: &u128) -> [u8; 32] {
+    let mut hash = [0u8; 32];
+
+    hash_b[8..8 + 16].copy_from_slice(&nonce.to_be_bytes());
+
+    let mut keccak = Keccak::v256();
+    keccak.update(hash_b);
+    keccak.finalize(&mut hash);
+
+    hash
+}
+
+fn generate_hash(
+    env: &Env,
+    index: &u32,
+    nonce: &u128,
+    entropy: &BytesN<32>,
+    farmer: &Address,
+) -> [u8; 84] {
+    let mut hash_b = [0u8; 84];
+
+    let mut farmer_b = [0u8; 32];
+    let farmer_bytes = farmer.clone().to_xdr(&env);
+    farmer_bytes
+        .slice(farmer_bytes.len() - 32..)
+        .copy_into_slice(&mut farmer_b);
+
+    hash_b[..4].copy_from_slice(&index.to_be_bytes());
+    hash_b[4..4 + 16].copy_from_slice(&nonce.to_be_bytes());
+    hash_b[20..20 + 32].copy_from_slice(&entropy.to_array());
+    hash_b[52..].copy_from_slice(&farmer_b);
+
+    return hash_b;
+}
+
+fn integer_nth_root(y: u64, n: u32) -> u64 {
+    if y == 0 {
+        return 0;
+    }
+
+    if y == 1 || n == 1 {
+        return y;
+    }
+
+    let mut low = 1;
+    let mut high = y;
+
+    while low < high {
+        let mid = (low + high) / 2;
+
+        // Calculate mid^n using integer multiplication
+        let mut power = 1u64;
+        let mut overflow = false;
+
+        for _ in 0..n {
+            match power.checked_mul(mid) {
+                Some(val) if val <= y => power = val,
+                _ => {
+                    overflow = true;
+                    break;
+                }
+            }
+        }
+
+        if !overflow && power == y {
+            return mid; // Exact match found
+        } else if !overflow && power < y {
+            low = mid + 1;
+        } else {
+            high = mid;
+        }
+    }
+
+    low - 1
+}
+
+#[test]
+fn test() {
+    let max_zero: i128 = 9;
+    let min_zero: i128 = 5;
+    let my_zero: i128 = 4;
+
+    let range_zero = max_zero - min_zero;
+
+    println!(
+        "{:?}",
+        100_0000000.fixed_div_floor(range_zero, my_zero - min_zero)
+    );
+
+    let max_stake: i128 = 100_0000000;
+    let min_stake: i128 = 1;
+    let my_stake: i128 = 10_0000000;
+
+    let range_stake = max_stake - min_stake;
+
+    println!(
+        "{:?}",
+        100_0000000.fixed_div_floor(range_stake, my_stake - min_stake)
+    );
+
+    let max_gap: i128 = 60;
+    let min_gap: i128 = 1;
+    let my_gap: i128 = 40;
+
+    let range_gap = max_gap - min_gap;
+
+    println!(
+        "{:?}",
+        100_0000000.fixed_div_floor(range_gap, my_gap - min_gap)
+    );
+}
+
 #[test]
 fn test_address_lengths() {
     let env: Env = Env::default();
@@ -122,80 +234,4 @@ fn test_integer_nth_root() {
     let res = integer_nth_root(y, n);
 
     println!("{:?}", res);
-}
-
-fn generate_keccak(hash_b: &mut [u8; 84], nonce: &u128) -> [u8; 32] {
-    let mut hash = [0u8; 32];
-
-    hash_b[8..8 + 16].copy_from_slice(&nonce.to_be_bytes());
-
-    let mut keccak = Keccak::v256();
-    keccak.update(hash_b);
-    keccak.finalize(&mut hash);
-
-    hash
-}
-
-fn generate_hash(
-    env: &Env,
-    index: &u32,
-    nonce: &u128,
-    entropy: &BytesN<32>,
-    farmer: &Address,
-) -> [u8; 84] {
-    let mut hash_b = [0u8; 84];
-
-    let mut farmer_b = [0u8; 32];
-    let farmer_bytes = farmer.clone().to_xdr(&env);
-    farmer_bytes
-        .slice(farmer_bytes.len() - 32..)
-        .copy_into_slice(&mut farmer_b);
-
-    hash_b[..4].copy_from_slice(&index.to_be_bytes());
-    hash_b[4..4 + 16].copy_from_slice(&nonce.to_be_bytes());
-    hash_b[20..20 + 32].copy_from_slice(&entropy.to_array());
-    hash_b[52..].copy_from_slice(&farmer_b);
-
-    return hash_b;
-}
-
-fn integer_nth_root(y: u64, n: u32) -> u64 {
-    if y == 0 {
-        return 0;
-    }
-
-    if y == 1 || n == 1 {
-        return y;
-    }
-
-    let mut low = 1;
-    let mut high = y;
-
-    while low < high {
-        let mid = (low + high) / 2;
-
-        // Calculate mid^n using integer multiplication
-        let mut power = 1u64;
-        let mut overflow = false;
-
-        for _ in 0..n {
-            match power.checked_mul(mid) {
-                Some(val) if val <= y => power = val,
-                _ => {
-                    overflow = true;
-                    break;
-                }
-            }
-        }
-
-        if !overflow && power == y {
-            return mid; // Exact match found
-        } else if !overflow && power < y {
-            low = mid + 1;
-        } else {
-            high = mid;
-        }
-    }
-
-    low - 1
 }

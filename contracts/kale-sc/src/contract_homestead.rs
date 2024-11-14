@@ -15,11 +15,11 @@ impl HomesteadTrait for Contract {
         farmer.require_auth();
 
         if has_farm_homesteader(&env) {
-            panic_with_error!(&env, &Errors::AlreadyDiscovered);
+            panic_with_error!(&env, &Errors::HomesteadExists);
         }
 
         if token::StellarAssetClient::new(&env, &asset).admin() != env.current_contract_address() {
-            panic_with_error!(&env, &Errors::AssetAdminMismatch);
+            panic_with_error!(&env, &Errors::AssetAdminInvalid);
         }
         // NOTE could put an else here that changed the asset admin but I think I'd rather than happen external to this fn
 
@@ -46,7 +46,7 @@ impl HomesteadTrait for Contract {
         homesteader.require_auth();
 
         if paused {
-            panic_with_error!(&env, &Errors::FarmIsPaused);
+            panic_with_error!(&env, &Errors::FarmPaused);
         }
 
         set_farm_paused(&env, true);
@@ -61,7 +61,7 @@ impl HomesteadTrait for Contract {
         homesteader.require_auth();
 
         if paused {
-            panic_with_error!(&env, &Errors::FarmIsNotPaused);
+            panic_with_error!(&env, &Errors::FarmNotPaused);
         }
 
         set_farm_paused(&env, false);
