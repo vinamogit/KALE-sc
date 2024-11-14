@@ -9,7 +9,7 @@ mod storage;
 mod tests;
 mod types;
 
-// Higher value gives more weight to zero_count
+// Higher value gives more weight to zeros
 pub const ZEROS_EXPONENT: i128 = 4;
 // Higher BLOCK_INTERVAL means there's more time to mine a block which means we can have more participation without risking problematic congestion
 // Too low and the network could be congested

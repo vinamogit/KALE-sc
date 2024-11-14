@@ -16,7 +16,7 @@ pub fn find_nonce_and_hash(
     index: &u32,
     entropy: &BytesN<32>,
     farmer: &Address,
-    zero_count: u32,
+    zeros: u32,
 ) -> (u128, BytesN<32>) {
     let mut nonce = 0;
     let mut hash_b = generate_hash(env, index, &nonce, entropy, farmer);
@@ -37,7 +37,7 @@ pub fn find_nonce_and_hash(
             }
         }
 
-        if leading_zeros >= zero_count {
+        if leading_zeros >= zeros {
             return (nonce, BytesN::from_array(env, &hash));
         }
 

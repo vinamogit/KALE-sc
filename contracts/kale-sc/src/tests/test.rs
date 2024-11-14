@@ -11,9 +11,7 @@ use crate::{
 };
 use soroban_sdk::{
     testutils::{Address as _, EnvTestConfig, Ledger},
-    token,
-    xdr::ToXdr,
-    Address, BytesN, Env,
+    token, Address, BytesN, Env,
 };
 
 // TODO add more tests
@@ -27,7 +25,13 @@ fn test() {
         capture_snapshot_at_drop: false,
     });
 
+    env.ledger().set_min_temp_entry_ttl(17280);
+    env.ledger().set_min_persistent_entry_ttl(2073600);
+
     env.mock_all_auths();
+
+    let sequence = env.ledger().sequence();
+    let timestamp = env.ledger().timestamp();
 
     let farm_address: Address = env.register_contract(None, Contract);
     let farm_client = ContractClient::new(&env, &farm_address);
@@ -125,15 +129,18 @@ fn test() {
         ),
     );
 
-    println!("{:?}", farmer_1.clone().to_xdr(&env));
+    env.ledger().set_sequence_number(sequence + 1);
 
     farm_client.work(&farmer_1, &hash_0, &nonce_0); // 0 zeros
-    farm_client.work(&farmer_2, &hash_2, &nonce_2); // 7 zeros
-    farm_client.work(&farmer_3, &hash_3, &nonce_3); // 8 zeros
     farm_client.work(&farmer_4, &hash_4, &nonce_4); // 9 zeros
 
     // Should be able to update for a higher zero count
     farm_client.work(&farmer_1, &hash_1, &nonce_1); // 6 zeros
+
+    env.ledger().set_sequence_number(sequence + 20);
+
+    farm_client.work(&farmer_2, &hash_2, &nonce_2); // 7 zeros
+    farm_client.work(&farmer_3, &hash_3, &nonce_3); // 8 zeros
 
     // Should not be able to update for a lower zero count
     let err = farm_client
@@ -143,8 +150,7 @@ fn test() {
 
     assert_eq!(err, Errors::ZeroCountTooLow.into());
 
-    env.ledger()
-        .set_timestamp(env.ledger().timestamp() + BLOCK_INTERVAL);
+    env.ledger().set_timestamp(timestamp + BLOCK_INTERVAL);
 
     farm_client.plant(&farmer_1, &0);
 
@@ -152,6 +158,11 @@ fn test() {
     farm_client.harvest(&farmer_2, &index);
     farm_client.harvest(&farmer_3, &index);
     farm_client.harvest(&farmer_4, &index);
+
+    // farmer 1 profit: 6756720
+    // farmer 2 profit: 270
+    // farmer 3 profit: 0
+    // farmer 4 profit: 43243009
 
     println!(
         "farmer 1 profit: {:?}",

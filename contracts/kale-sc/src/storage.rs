@@ -2,7 +2,7 @@ use soroban_sdk::{panic_with_error, Address, BytesN, Env};
 
 use crate::{
     errors::Errors,
-    types::{Block, Storage},
+    types::{Block, Pail, Storage},
     WEEK_OF_LEDGERS,
 };
 
@@ -99,22 +99,17 @@ pub fn has_pail(env: &Env, farmer: Address, index: u32) -> bool {
 
     env.storage().temporary().has::<Storage>(&pail_key)
 }
-pub fn get_pail(env: &Env, farmer: Address, index: u32) -> Option<(i128, Option<u32>)> {
+pub fn get_pail(env: &Env, farmer: Address, index: u32) -> Option<Pail> {
     let pail_key = Storage::Pail(farmer, index);
 
-    env.storage()
-        .temporary()
-        .get::<Storage, (i128, Option<u32>)>(&pail_key)
+    env.storage().temporary().get::<Storage, Pail>(&pail_key)
 }
-pub fn set_pail(env: &Env, farmer: Address, index: u32, amount: i128, zeros: Option<u32>) {
+pub fn set_pail(env: &Env, farmer: Address, index: u32, pail: Pail) {
     let pail_key = Storage::Pail(farmer, index);
 
-    // NOTE: we allow passing zeros but zeros further down the stack will cause issues
-    // So either A) we should enforce requiring a > 0 value
-    // or B) set the min value to 1 (which will cause the interesting side affect of being able to "free" mint 1 stroop of value)
     env.storage()
         .temporary()
-        .set::<Storage, (i128, Option<u32>)>(&pail_key, &(amount.max(1), zeros));
+        .set::<Storage, Pail>(&pail_key, &pail);
 }
 pub fn remove_pail(env: &Env, farmer: Address, index: u32) {
     let pail_key = Storage::Pail(farmer, index);

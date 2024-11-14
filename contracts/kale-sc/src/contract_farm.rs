@@ -8,7 +8,7 @@ use crate::{
         get_farm_index, get_farm_paused, get_pail, has_pail, remove_pail, set_block,
         set_farm_entropy, set_pail,
     },
-    types::Block,
+    types::{Block, Pail},
     Contract, ContractClient, FarmTrait, BLOCK_INTERVAL, BLOCK_REWARD, ZEROS_EXPONENT,
 };
 
@@ -21,35 +21,13 @@ impl FarmTrait for Contract {
         let mut index = get_farm_index(&env);
         let entropy = get_farm_entropy(&env);
         let paused = get_farm_paused(&env);
-
-        if paused {
-            panic_with_error!(&env, &Errors::FarmIsPaused);
-        }
-
-        if amount < 0 {
-            panic_with_error!(&env, &Errors::PailAmountTooLow);
-        }
-
         let mut block = match get_block(&env, index) {
             // genesis or evicted
-            None => Block {
-                timestamp: env.ledger().timestamp(),
-                entropy,
-                staked: 0,
-                reclaimed: 0,
-                pow_zeros: 0,
-            },
+            None => generate_block(&env, entropy),
             Some(mut block) => {
                 // if the block is >= 1 minute old, we need to create a new one
                 if env.ledger().timestamp() >= block.timestamp + BLOCK_INTERVAL {
-                    block = Block {
-                        timestamp: env.ledger().timestamp(),
-                        entropy,
-                        staked: 0,
-                        reclaimed: 0,
-                        pow_zeros: 0,
-                    };
-
+                    block = generate_block(&env, entropy);
                     index = bump_farm_index(&env, index);
                 }
 
@@ -57,22 +35,37 @@ impl FarmTrait for Contract {
             }
         };
 
-        // must come after block discovery as the index may have been bumped
+        if paused {
+            panic_with_error!(&env, &Errors::FarmIsPaused);
+        }
+
+        if amount < 0 {
+            panic_with_error!(&env, &Errors::PlantAmountTooLow);
+        }
+
+        // NOTE must come after block discovery as the index may have been bumped
         if has_pail(&env, farmer.clone(), index) {
             panic_with_error!(&env, &Errors::AlreadyHasPail);
         }
 
         block.staked += amount as u64;
 
+        // NOTE: we allow passing zeros but zeros further down the stack will cause issues
+        // So either A) we should enforce requiring a > 0 value
+        // or B) set the min value to 1 (which will cause the interesting side affect of being able to "free" mint 1 stroop of value)
+
         if amount > 0 {
-            token::Client::new(&env, &asset).transfer(&farmer, &asset, &amount);
+            token::Client::new(&env, &asset).burn(&farmer, &amount);
         }
 
-        // NOTE consider adding a zero_count commitment to the pail vs just a stake amount
-        // This would ensure folks couldn't run a lot of initial `work`'s for low zero counts as they tried to find a highest
-        // I think initially though I want to try this version and see what happens
+        let pail = Pail {
+            plant_seq: env.ledger().sequence(),
+            work_seq: None,
+            stake: amount.max(1), // ensure stake is at least 1 so new farmers will get _something_
+            zeros: None,
+        };
 
-        set_pail(&env, farmer.clone(), index, amount, None);
+        set_pail(&env, farmer, index, pail);
         set_block(&env, index, &block);
 
         extend_instance_ttl(&env);
@@ -84,41 +77,50 @@ impl FarmTrait for Contract {
         let index = get_farm_index(&env);
         let mut block = get_block(&env, index)
             .unwrap_or_else(|| panic_with_error!(&env, &Errors::BlockNotFound));
-        let (pail, kale) = get_pail(&env, farmer.clone(), index)
+        let mut pail = get_pail(&env, farmer.clone(), index)
             .unwrap_or_else(|| panic_with_error!(&env, &Errors::PailNotFound));
         let generated_hash = generate_hash(&env, &index, &nonce, &block.entropy, &farmer);
+
+        let sequence = env.ledger().sequence();
+        let mut zeros = 0;
+
+        // Ensure there's been at least one ledger since
+        if sequence <= pail.plant_seq {
+            panic_with_error!(&env, &Errors::WorkNotReady);
+        }
 
         if hash != generated_hash {
             panic_with_error!(&env, &Errors::HashIsInvalid);
         }
 
-        let mut zero_count = 0;
-
         for byte in hash {
             if byte == 0 {
-                zero_count += 2;
+                zeros += 2;
             } else {
-                zero_count += byte.leading_zeros() / 4;
+                zeros += byte.leading_zeros() / 4;
                 break;
             }
         }
 
-        match kale {
-            Some(prev_zero_count) => {
-                if zero_count <= prev_zero_count {
+        block.pow_zeros = block.pow_zeros + (ZEROS_EXPONENT.pow(zeros) * pail.stake * (sequence - pail.plant_seq) as i128);
+
+        match pail.zeros {
+            Some(pail_zeros) => {
+                if zeros <= pail_zeros {
                     panic_with_error!(&env, &Errors::ZeroCountTooLow);
                 }
 
-                block.pow_zeros = block.pow_zeros + (ZEROS_EXPONENT.pow(zero_count) * pail)
-                    - (ZEROS_EXPONENT.pow(prev_zero_count) * pail);
+                block.pow_zeros = block.pow_zeros - (ZEROS_EXPONENT.pow(pail_zeros) * pail.stake);
             }
             None => {
-                block.pow_zeros = block.pow_zeros + (ZEROS_EXPONENT.pow(zero_count) * pail);
-                block.reclaimed += pail as u64;
+                block.reclaimed += pail.stake as u64;
             }
         }
 
-        set_pail(&env, farmer, index, pail, Some(zero_count));
+        pail.work_seq = Some(sequence);
+        pail.zeros = Some(zeros);
+
+        set_pail(&env, farmer, index, pail);
         set_block(&env, index, &block);
         set_farm_entropy(&env, &generated_hash);
 
@@ -130,26 +132,28 @@ impl FarmTrait for Contract {
         let farm_index = get_farm_index(&env);
         let block = get_block(&env, index)
             .unwrap_or_else(|| panic_with_error!(&env, &Errors::BlockNotFound));
-        let (pail, kale) = get_pail(&env, farmer.clone(), index)
+        let Pail { plant_seq, work_seq, stake, zeros } = get_pail(&env, farmer.clone(), index)
             .unwrap_or_else(|| panic_with_error!(&env, &Errors::PailNotFound));
 
         if index >= farm_index {
             panic_with_error!(&env, &Errors::HarvestNotReady);
         }
 
-        if kale.is_none() {
-            panic_with_error!(&env, &Errors::KaleNotFound);
+        if work_seq.is_none() || zeros.is_none() {
+            panic_with_error!(&env, &Errors::WorkNotFound);
         }
 
         let full_block_reward = BLOCK_REWARD + block.staked;
         let actual_block_reward = full_block_reward - block.reclaimed;
 
-        let kale = kale.unwrap();
-        let reward = (ZEROS_EXPONENT.pow(kale) * pail).fixed_div_floor(
+        let work_seq = work_seq.unwrap();
+        let zeros = zeros.unwrap();
+
+        let reward = (ZEROS_EXPONENT.pow(zeros) * stake * (work_seq - plant_seq) as i128).fixed_div_floor(
             &env,
             &(block.pow_zeros),
             &(actual_block_reward as i128),
-        ) + pail;
+        ) + stake;
 
         token::StellarAssetClient::new(&env, &asset).mint(&farmer, &reward);
 
@@ -158,6 +162,16 @@ impl FarmTrait for Contract {
         extend_instance_ttl(&env);
 
         reward
+    }
+}
+
+fn generate_block(env: &Env, entropy: BytesN<32>) -> Block {
+    Block {
+        timestamp: env.ledger().timestamp(),
+        entropy,
+        staked: 0,
+        reclaimed: 0,
+        pow_zeros: 0,
     }
 }
 
