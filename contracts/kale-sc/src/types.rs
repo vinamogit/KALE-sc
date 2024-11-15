@@ -4,17 +4,13 @@ use soroban_sdk::{contracttype, Address, BytesN};
 #[derive(Clone, Debug, PartialEq)]
 pub struct Block {
     pub timestamp: u64,
-
     pub min_gap: u32,
     pub min_stake: i128,
     pub min_zeros: u32,
-
     pub max_gap: u32,
     pub max_stake: i128,
     pub max_zeros: u32,
-
     pub entropy: BytesN<32>,
-
     pub staked_total: i128,
     pub normalized_total: i128,
 }
