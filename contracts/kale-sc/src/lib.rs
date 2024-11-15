@@ -34,7 +34,7 @@ pub trait HomesteadTrait {
 pub trait FarmTrait {
     fn plant(env: Env, farmer: Address, amount: i128);
 
-    fn work(env: Env, farmer: Address, hash: BytesN<32>, nonce: u128);
+    fn work(env: Env, farmer: Address, hash: BytesN<32>, nonce: u64);
 
     fn harvest(env: Env, farmer: Address, index: u32) -> i128;
 }

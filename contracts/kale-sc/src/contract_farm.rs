@@ -106,7 +106,7 @@ impl FarmTrait for Contract {
         extend_instance_ttl(&env);
     }
 
-    fn work(env: Env, farmer: Address, hash: BytesN<32>, nonce: u128) {
+    fn work(env: Env, farmer: Address, hash: BytesN<32>, nonce: u64) {
         // No auth_require here so others can call this function on the `farmer`'s behalf
 
         let index = get_farm_index(&env);
@@ -243,11 +243,11 @@ pub fn empty_block(env: &Env) -> Block {
 fn generate_hash(
     env: &Env,
     index: &u32,
-    nonce: &u128,
+    nonce: &u64,
     entropy: &BytesN<32>,
     farmer: &Address,
 ) -> BytesN<32> {
-    let mut hash_array = [0u8; 84];
+    let mut hash_array = [0u8; 76];
 
     let mut farmer_array = [0u8; 32];
     let farmer_bytes = farmer.to_xdr(env);
@@ -256,9 +256,9 @@ fn generate_hash(
         .copy_into_slice(&mut farmer_array);
 
     hash_array[..4].copy_from_slice(&index.to_be_bytes());
-    hash_array[4..4 + 16].copy_from_slice(&nonce.to_be_bytes());
-    hash_array[20..20 + 32].copy_from_slice(&entropy.to_array());
-    hash_array[52..].copy_from_slice(&farmer_array);
+    hash_array[4..12].copy_from_slice(&nonce.to_be_bytes());
+    hash_array[12..44].copy_from_slice(&entropy.to_array());
+    hash_array[44..].copy_from_slice(&farmer_array);
 
     env.crypto()
         .keccak256(&Bytes::from_array(env, &hash_array))

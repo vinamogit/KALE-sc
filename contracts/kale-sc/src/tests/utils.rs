@@ -17,14 +17,14 @@ pub fn find_nonce_and_hash(
     entropy: &BytesN<32>,
     farmer: &Address,
     zeros: u32,
-) -> (u128, BytesN<32>) {
+) -> (u64, BytesN<32>) {
     let mut nonce = 0;
-    let mut hash_b = generate_hash(env, index, &nonce, entropy, farmer);
+    let mut hash_array = generate_hash(env, index, &nonce, entropy, farmer);
 
-    // println!("{:?}", hash_b);
+    // println!("{:?}", hash_array);
 
     loop {
-        let hash = generate_keccak(&mut hash_b, &nonce);
+        let hash = generate_keccak(&mut hash_array, &nonce);
         let mut leading_zeros = 0;
 
         for byte in hash {
@@ -45,10 +45,10 @@ pub fn find_nonce_and_hash(
     }
 }
 
-fn generate_keccak(hash_b: &mut [u8; 84], nonce: &u128) -> [u8; 32] {
+fn generate_keccak(hash_b: &mut [u8; 76], nonce: &u64) -> [u8; 32] {
     let mut hash = [0u8; 32];
 
-    hash_b[8..8 + 16].copy_from_slice(&nonce.to_be_bytes());
+    hash_b[8..16].copy_from_slice(&nonce.to_be_bytes());
 
     let mut keccak = Keccak::v256();
     keccak.update(hash_b);
@@ -60,26 +60,25 @@ fn generate_keccak(hash_b: &mut [u8; 84], nonce: &u128) -> [u8; 32] {
 fn generate_hash(
     env: &Env,
     index: &u32,
-    nonce: &u128,
+    nonce: &u64,
     entropy: &BytesN<32>,
     farmer: &Address,
-) -> [u8; 84] {
-    let mut hash_b = [0u8; 84];
+) -> [u8; 76] {
+    let mut hash_array = [0u8; 76];
 
-    let mut farmer_b = [0u8; 32];
-    let farmer_bytes = farmer.clone().to_xdr(&env);
+    let mut farmer_array = [0u8; 32];
+    let farmer_bytes = farmer.to_xdr(env);
     farmer_bytes
         .slice(farmer_bytes.len() - 32..)
-        .copy_into_slice(&mut farmer_b);
+        .copy_into_slice(&mut farmer_array);
 
-    hash_b[..4].copy_from_slice(&index.to_be_bytes());
-    hash_b[4..4 + 16].copy_from_slice(&nonce.to_be_bytes());
-    hash_b[20..20 + 32].copy_from_slice(&entropy.to_array());
-    hash_b[52..].copy_from_slice(&farmer_b);
+    hash_array[..4].copy_from_slice(&index.to_be_bytes());
+    hash_array[4..12].copy_from_slice(&nonce.to_be_bytes());
+    hash_array[12..44].copy_from_slice(&entropy.to_array());
+    hash_array[44..].copy_from_slice(&farmer_array);
 
-    return hash_b;
+    hash_array
 }
-
 fn integer_nth_root(y: u64, n: u32) -> u64 {
     if y == 0 {
         return 0;
