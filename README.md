@@ -7,7 +7,8 @@
 ## A Proof-of-<i>Team</i>work Stellar Asset
 
 > [!CAUTION]
-> This contract has not been audited nor has it been fully tested yet, take this into consideration.
+> This contract has not been audited nor has it been thoroughly tested, it is – as the kids say – a meme coin. 
+> Take this into consideration.
 
 `KALE` is a Stellar asset that can only be created by mining it through this contract. Only one unit (`1_0000000`) of the asset can be farmed every minute.
 
@@ -35,16 +36,20 @@ In order to successfully farm `KALE` into your account you must invoke 3 contrac
 Let's look at each of these steps in more detail.
 
 ### 1. `plant`
+
 Step one of all bountiful harvests is planting. In our case planting is the staking step. In order to both commit your interest in mining a block and to multiply your bounty you must stake some amount of `KALE`. Please note that a stake of `0` is permitted and is in fact the only way to get started farming in The KALEpail Project.
 
-The amount you stake will be used as a multiplier against the number of prefix zeros you submit in your `hash` during the `work` step. The math breaks down pretty simply as follows:
+The amount you stake will be included in the block reward calculation alongside the prefix zeros you submit in your `hash` during the `work` step and the number of ledgers you let pass between when you called `plant` and `work`. 
 
-`ZEROS_EXPONENT.pow(<number of zeros>) * <stake amount>`
-or for you JS folks out there `Math.pow(ZEROS_EXPONENT, <number of zeros>) * <stake amount>`.
+The math is relatively simple however as we don't have floating point numbers in Soroban things end up _looking_ a little intimidating. However the basic idea is there are three variables that affect your share of the block reward: `gap`, `stake` and `zeros`.
 
-So for example if your stake was 1 `KALE` (`amount=1_0000000`) and you mined a hash with 7 prefix zeros and the `ZEROS_EXPONENT` was 4 your total contribution to receiving your share of the harvest would be `4.pow(7) * 1_0000000` or `163_840_000_000`.
+- `gap` is the number of ledgers that have passed between when you called `plant` and `work`. The longer you wait the higher this value will contribute to your share of the block reward. The risk is if you wait too long you might miss the block entirely and thus forfeit your stake.
+- `stake` is the amount of `KALE` you've staked. The more you stake the higher this value will contribute to your share of the block reward. Pretty simple. The risk is if you stake too much and then cannot for whatever reason submit a valid hash in the `work` step you'll forfeit this stake.
+- `zeros` is the number of prefix zeros you were able to generate in your `hash`. The more zeros you can generate the higher this value will contribute to your share of the block reward. The risk is more zeros either takes longer or more hashing power. 
 
-The aim of this basic mathematical algorithm is to try and strike a balance between staking power and hashing power where neither is too overly preferred against the other. As time progresses I expect we'll need to continue to refine both the stake and hash weights in order to find the appropriate balance of power between OG farmers, power users and new players.
+In the end these values are all normalized across some common base value and then just added together to arrive at your total contribution to the block which will be used to calculate your share of the block reward during the `harvest` step.
+
+The aim of this mathematical algorithm is to try and strike a balance between staking power and hashing power where neither is too overly preferred against the other. As time progresses I expect we'll need to continue to refine the algorithm in order to find the appropriate balance of power between OG farmers, power users and new players.
 
 ### 2. `work`
 
@@ -56,11 +61,11 @@ Hashes will be verified via the following function:
 fn generate_hash(
     env: &Env,
     index: &u32,
-    nonce: &u128,
+    nonce: &u64,
     entropy: &BytesN<32>,
     farmer: &Address,
 ) -> BytesN<32> {
-    let mut hash_array = [0u8; 84];
+    let mut hash_array = [0u8; 76];
 
     let mut farmer_array = [0u8; 32];
     let farmer_bytes = farmer.to_xdr(env);
@@ -69,9 +74,9 @@ fn generate_hash(
         .copy_into_slice(&mut farmer_array);
 
     hash_array[..4].copy_from_slice(&index.to_be_bytes());
-    hash_array[4..4 + 16].copy_from_slice(&nonce.to_be_bytes());
-    hash_array[20..20 + 32].copy_from_slice(&entropy.to_array());
-    hash_array[52..].copy_from_slice(&farmer_array);
+    hash_array[4..12].copy_from_slice(&nonce.to_be_bytes());
+    hash_array[12..44].copy_from_slice(&entropy.to_array());
+    hash_array[44..].copy_from_slice(&farmer_array);
 
     env.crypto()
         .keccak256(&Bytes::from_array(env, &hash_array))
@@ -82,9 +87,8 @@ fn generate_hash(
 A couple things to note:
 
 1. You can get the `index` value from the instance storage `FarmIndex` key.
-2. The nonce is a `u128` so 16 bytes long. That's pretty long.
-3. Entropy is the `hash` value of the previous block. 
-4. We only take the last 32 bytes of the `farmer` address. This allows us to keep the hash generation process as small, compact and cheap as possible while still supporting both G- and C- `farmer` addresses. (G- addresses are 44 bytes while C- addresses are just 40 when breaking them down to their raw XDR)
+2. Entropy is the `hash` value of the previous block. 
+3. We only take the last 32 bytes of the `farmer` address. This allows us to keep the hash generation process as small, compact and cheap as possible while still supporting both G- and C- `farmer` addresses. (G- addresses are 44 bytes while C- addresses are just 40 when breaking them down to their raw XDR)
 
 I've tried to keep the hash as tight and simple as possible to make it easier and faster to build hashing algorithms without having to fiddle with XDR headers.
 
@@ -107,7 +111,6 @@ Keep in mind block's are stored as temporary entries so you either need to act f
 * Write a harvest contract that can harvest multiple blocks at a time. Temporary ttl lasts 24 hrs atm so there’s quite a bit of headroom to bundle blocks into single super claim transactions.
     * Build a service that harvests other folks blocks for them (for a fee)
     * Build a service that bumps ttl on blocks (for a fee) to ensure there's time to claim rewards.
-* [Patched in late November release, 2024] ~~Don't like submitting two transactions for `plant` and `work`? What's keeping you from writing your own contract that submits both in the same transaction? Atm nothing, so go for it!~~
 
 ## Get A Free Launchtube Token
 Want to submit mainnet transactions for free? Use [Launchtube](https://github.com/stellar/launchtube)! I'll be handing out 100 XLM API tokens to anyone who asks in our [Discord channel](https://discord.com/channels/761985725453303838/1304843790351204403).
