@@ -22,13 +22,15 @@ pub const WEEK_OF_LEDGERS: u32 = 60 * 60 * 24 / 5 * 7; // assumes 5 second ledge
 pub struct Contract;
 
 pub trait HomesteadTrait {
-    fn homestead(env: Env, homesteader: Address, asset: Address);
+    fn homestead(env: Env, farmer: Address, asset: Address);
+
+    fn upgrade(env: Env, hash: BytesN<32>);
 
     fn pause(env: Env);
 
     fn unpause(env: Env);
 
-    fn upgrade(env: Env, hash: BytesN<32>);
+    fn remove_block(env: Env, index: u32);
 }
 
 pub trait FarmTrait {

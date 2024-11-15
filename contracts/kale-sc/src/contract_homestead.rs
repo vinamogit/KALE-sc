@@ -7,6 +7,7 @@ use crate::{
         extend_instance_ttl, get_farm_homesteader, get_farm_paused, has_farm_homesteader,
         set_farm_asset, set_farm_homesteader, set_farm_paused,
     },
+    types::Storage,
     Contract, ContractClient, HomesteadTrait,
 };
 
@@ -67,5 +68,13 @@ impl HomesteadTrait for Contract {
         set_farm_paused(&env, false);
 
         extend_instance_ttl(&env);
+    }
+
+    fn remove_block(env: Env, index: u32) {
+        let homesteader = get_farm_homesteader(&env);
+
+        homesteader.require_auth();
+
+        env.storage().temporary().remove(&Storage::Block(index));
     }
 }

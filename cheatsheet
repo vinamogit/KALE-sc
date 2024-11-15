@@ -20,3 +20,6 @@ stellar contract invoke --id CDBG4XY2T5RRPH7HKGZIWMR2MFPLC6RJ453ITXQGNQXG6LNVL43
 
 # Harvest
 stellar contract invoke --id CDBG4XY2T5RRPH7HKGZIWMR2MFPLC6RJ453ITXQGNQXG6LNVL4375MRJ --network testnet --source default -- harvest --index 0 --farmer default
+
+# Remove Block
+stellar contract invoke --id CDBG4XY2T5RRPH7HKGZIWMR2MFPLC6RJ453ITXQGNQXG6LNVL4375MRJ --network testnet --source default -- remove_block --index 0
