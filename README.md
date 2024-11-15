@@ -46,9 +46,9 @@ The math is relatively simple however as we don't have floating point numbers in
 - `stake` is the amount of `KALE` you've staked. The more you stake the higher this value will contribute to your share of the block reward. Pretty simple. The risk is if you stake too much and then cannot for whatever reason submit a valid hash in the `work` step you'll forfeit this stake.
 - `zeros` is the number of prefix zeros you were able to generate in your `hash`. The more zeros you can generate the higher this value will contribute to your share of the block reward. The risk is more zeros either takes longer or more hashing power. 
 
-In the end these values are all normalized across some common base value and then just added together to arrive at your total contribution to the block which will be used to calculate your share of the block reward during the `harvest` step.
+In the end these values are all normalized across a common base value and then just added together to arrive at your total contribution to the block which will be used to calculate your share of the block reward during the `harvest` step.
 
-The aim of this mathematical algorithm is to try and strike a balance between staking power and hashing power where neither is too overly preferred against the other. As time progresses I expect we'll need to continue to refine the algorithm in order to find the appropriate balance of power between OG farmers, power users and new players.
+The aim of this mathematical algorithm is to try and strike a balance between timing, risk, staking power and hashing power where no one value is too overly preferred against the other. As time progresses I expect we'll need to continue to refine the algorithm in order to find the appropriate balance of power between OG farmers, power users and new players.
 
 ### 2. `work`
 
