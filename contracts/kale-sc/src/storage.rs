@@ -1,8 +1,8 @@
-use soroban_sdk::{panic_with_error, Address, BytesN, Env};
+use soroban_sdk::{panic_with_error, Address, Env};
 
 use crate::{
     errors::Errors,
-    types::{Block, Storage},
+    types::{Block, Pail, Storage},
     WEEK_OF_LEDGERS,
 };
 
@@ -23,7 +23,7 @@ pub fn get_farm_homesteader(env: &Env) -> Address {
     env.storage()
         .instance()
         .get::<Storage, Address>(&Storage::Homesteader)
-        .unwrap_or_else(|| panic_with_error!(&env, &Errors::HomesteadNotFound))
+        .unwrap_or_else(|| panic_with_error!(&env, &Errors::HomesteadMissing))
 }
 pub fn set_farm_homesteader(env: &Env, homesteader: &Address) {
     env.storage()
@@ -35,7 +35,7 @@ pub fn get_farm_asset(env: &Env) -> Address {
     env.storage()
         .instance()
         .get::<Storage, Address>(&Storage::HomesteadAsset)
-        .unwrap_or_else(|| panic_with_error!(&env, &Errors::HomesteadNotFound))
+        .unwrap_or_else(|| panic_with_error!(&env, &Errors::HomesteadMissing))
 }
 pub fn set_farm_asset(env: &Env, asset: &Address) {
     env.storage()
@@ -49,26 +49,23 @@ pub fn get_farm_index(env: &Env) -> u32 {
         .get::<Storage, u32>(&Storage::FarmIndex)
         .unwrap_or(0)
 }
-pub fn bump_farm_index(env: &Env, mut current_farm_index: u32) -> u32 {
-    current_farm_index += 1;
+pub fn bump_farm_index(env: &Env, current_farm_index: &mut u32) {
+    *current_farm_index += 1;
 
     env.storage()
         .instance()
         .set::<Storage, u32>(&Storage::FarmIndex, &current_farm_index);
-
-    current_farm_index
 }
 
-pub fn get_farm_entropy(env: &Env) -> BytesN<32> {
+pub fn get_farm_block(env: &Env) -> Option<Block> {
     env.storage()
         .instance()
-        .get::<Storage, BytesN<32>>(&Storage::FarmEntropy)
-        .unwrap_or(BytesN::from_array(&env, &[0; 32]))
+        .get::<Storage, Block>(&Storage::FarmBlock)
 }
-pub fn set_farm_entropy(env: &Env, entropy: &BytesN<32>) {
+pub fn set_farm_block(env: &Env, block: &Block) {
     env.storage()
         .instance()
-        .set::<Storage, BytesN<32>>(&Storage::FarmEntropy, entropy);
+        .set::<Storage, Block>(&Storage::FarmBlock, block);
 }
 
 pub fn get_farm_paused(env: &Env) -> bool {
@@ -99,22 +96,17 @@ pub fn has_pail(env: &Env, farmer: Address, index: u32) -> bool {
 
     env.storage().temporary().has::<Storage>(&pail_key)
 }
-pub fn get_pail(env: &Env, farmer: Address, index: u32) -> Option<(i128, Option<u32>)> {
+pub fn get_pail(env: &Env, farmer: Address, index: u32) -> Option<Pail> {
     let pail_key = Storage::Pail(farmer, index);
 
-    env.storage()
-        .temporary()
-        .get::<Storage, (i128, Option<u32>)>(&pail_key)
+    env.storage().temporary().get::<Storage, Pail>(&pail_key)
 }
-pub fn set_pail(env: &Env, farmer: Address, index: u32, amount: i128, zeros: Option<u32>) {
+pub fn set_pail(env: &Env, farmer: Address, index: u32, pail: Pail) {
     let pail_key = Storage::Pail(farmer, index);
 
-    // NOTE: we allow passing zeros but zeros further down the stack will cause issues
-    // So either A) we should enforce requiring a > 0 value
-    // or B) set the min value to 1 (which will cause the interesting side affect of being able to "free" mint 1 stroop of value)
     env.storage()
         .temporary()
-        .set::<Storage, (i128, Option<u32>)>(&pail_key, &(amount.max(1), zeros));
+        .set::<Storage, Pail>(&pail_key, &pail);
 }
 pub fn remove_pail(env: &Env, farmer: Address, index: u32) {
     let pail_key = Storage::Pail(farmer, index);

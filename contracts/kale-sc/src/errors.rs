@@ -1,21 +1,19 @@
 use soroban_sdk::contracterror;
 
-// TODO clean up errors
-
 #[contracterror]
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Errors {
-    AlreadyDiscovered = 1,
-    HomesteadNotFound = 2,
-    PailAmountTooLow = 3,
-    AlreadyHasPail = 4,
-    FarmIsPaused = 5,
-    HashIsInvalid = 6,
-    BlockNotFound = 7,
-    HarvestNotReady = 8,
-    KaleNotFound = 9,
-    PailNotFound = 10,
-    ZeroCountTooLow = 11,
-    AssetAdminMismatch = 12,
-    FarmIsNotPaused = 13,
+    HomesteadExists = 1,
+    HomesteadMissing = 2,
+    AssetAdminInvalid = 3,
+    FarmPaused = 4,
+    FarmNotPaused = 5,
+    PlantAmountTooLow = 6,
+    ZeroCountTooLow = 7,
+    PailExists = 8,
+    PailMissing = 9,
+    WorkMissing = 10,
+    BlockMissing = 11,
+    HashInvalid = 12,
+    HarvestNotReady = 13,
 }
