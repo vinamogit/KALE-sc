@@ -119,10 +119,10 @@ fn test() {
         ),
     );
     let (nonce_4, hash_4) = (
-        23177611072u64,
+        50600046851u64,
         BytesN::<32>::from_array(
             &env,
-            &hex::decode("000000000f29081bcb654599fd9cc083ca662cf1b5c421433909a7c0abc985e3")
+            &hex::decode("00000000013ccae976811077e2554ade4bebcbff7902acd99716a445e7ceb595")
                 .unwrap()
                 .try_into()
                 .unwrap(),
@@ -132,7 +132,7 @@ fn test() {
     env.ledger().set_sequence_number(sequence + 1);
 
     farm_client.work(&farmer_1, &hash_0, &nonce_0); // 0 zeros
-                                                    // farm_client.work(&farmer_4, &hash_4, &nonce_4); // 9 zeros
+    farm_client.work(&farmer_4, &hash_4, &nonce_4); // 9 zeros
 
     // Should not be able to update for a lower or equal zero count
     let err = farm_client
@@ -157,7 +157,7 @@ fn test() {
     farm_client.harvest(&farmer_1, &index);
     farm_client.harvest(&farmer_2, &index);
     farm_client.harvest(&farmer_3, &index);
-    // farm_client.harvest(&farmer_4, &index);
+    farm_client.harvest(&farmer_4, &index);
 
     println!(
         "farmer 1 profit: {:?}",
