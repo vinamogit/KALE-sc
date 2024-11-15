@@ -50,6 +50,8 @@ In the end these values are all normalized across a common base value and then j
 
 The aim of this mathematical algorithm is to try and strike a balance between timing, risk, staking power and hashing power where no one value is too overly preferred against the other. As time progresses I expect we'll need to continue to refine the algorithm in order to find the appropriate balance of power between OG farmers, power users and new players.
 
+To dig more deeply into the math here explore the [`generate_normalizations()`](https://github.com/kalepail/KALE-sc/blob/main/contracts/kale-sc/src/contract_farm.rs#L268-L294) function.
+
 ### 2. `work`
 
 Once you've successfully ~~staked your claim~~ planted your garden you can move on to the actual mining step. The goal here is to attempt to generate a valid hash with the maximum number of prefix zeros. The more zeros you can generate the more `KALE` you'll be able to harvest in the end.
