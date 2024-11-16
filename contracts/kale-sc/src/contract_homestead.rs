@@ -80,5 +80,5 @@ impl HomesteadTrait for Contract {
 }
 
 // TODO add a __check_auth method that let's the homesteader sign for inbound auth
-// We've got a balance on the asset https://stellar.expert/explorer/public/contract/CB23WRDQWGSP6YPMY4UV5C4OW5CBTXKYN3XEATG7KJEZCXMJBYEHOUOV 
+// We've got a balance on the asset https://stellar.expert/explorer/public/contract/CB23WRDQWGSP6YPMY4UV5C4OW5CBTXKYN3XEATG7KJEZCXMJBYEHOUOV
 // Would like to be able to burn it, but to do that we'd need permission from the contract (the asset admin) to do so

@@ -14,6 +14,7 @@ pub enum Errors {
     PailMissing = 9,
     WorkMissing = 10,
     BlockMissing = 11,
-    HashInvalid = 12,
-    HarvestNotReady = 13,
+    BlockInvalid = 12,
+    HashInvalid = 13,
+    HarvestNotReady = 14,
 }

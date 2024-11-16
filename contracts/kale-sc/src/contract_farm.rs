@@ -37,7 +37,7 @@ impl FarmTrait for Contract {
                     min_stake: 0,
                     min_zeros: 7,
                     max_gap: 60,
-                    max_stake: BLOCK_REWARD,
+                    max_stake: 5_0000000,
                     max_zeros: 10,
                     entropy: BytesN::from_array(&env, &[0; 32]),
                     staked_total: 0,
@@ -106,7 +106,7 @@ impl FarmTrait for Contract {
         extend_instance_ttl(&env);
     }
 
-    fn work(env: Env, farmer: Address, hash: BytesN<32>, nonce: u64) {
+    fn work(env: Env, farmer: Address, hash: BytesN<32>, nonce: u64) -> u32 {
         // No auth_require here so others can call this function on the `farmer`'s behalf
 
         let index = get_farm_index(&env);
@@ -183,6 +183,8 @@ impl FarmTrait for Contract {
         set_farm_block(&env, &farm_block);
 
         extend_instance_ttl(&env);
+
+        gap
     }
 
     fn harvest(env: Env, farmer: Address, index: u32) -> i128 {
@@ -228,12 +230,12 @@ impl FarmTrait for Contract {
 pub fn empty_block(env: &Env) -> Block {
     Block {
         timestamp: env.ledger().timestamp(),
-        min_gap: 0,
-        min_stake: 0,
-        min_zeros: 0,
-        max_gap: 0,
-        max_stake: 0,
-        max_zeros: 0,
+        min_gap: u32::MAX,
+        min_stake: i128::MAX,
+        min_zeros: u32::MAX,
+        max_gap: u32::MIN,
+        max_stake: i128::MIN,
+        max_zeros: u32::MIN,
         entropy: BytesN::from_array(env, &[0; 32]),
         staked_total: 0,
         normalized_total: 0,
@@ -272,6 +274,13 @@ fn generate_normalizations(
     stake: i128,
     zeros: u32,
 ) -> (i128, i128, i128) {
+    if block.max_gap < block.min_gap
+        || block.max_stake < block.min_stake
+        || block.max_zeros < block.min_zeros
+    {
+        panic_with_error!(&env, &Errors::BlockInvalid);
+    }
+
     let range_gap = (block.max_gap - block.min_gap).max(1) as i128;
     let range_stake = block.max_stake - block.min_stake.max(1);
     let range_zero = (block.max_zeros - block.min_zeros).max(1) as i128;
