@@ -1,8 +1,7 @@
 # The KALEpail Project
 
 ![](./assets/farm.webp)
-
-<!-- TODO this needs updating to reflect the updates -->
+> [Fan fiction lore](https://kalepail.com/kale) courtesy of [Bri Wylde](https://github.com/briwylde08)
 
 ## A Proof-of-<i>Team</i>work Stellar Asset
 
