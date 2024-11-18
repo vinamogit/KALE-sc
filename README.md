@@ -1,6 +1,6 @@
 # The KALEpail Project
 
-![](./assets/farm.webp)
+![](./assets/farm.jpg)
 > [Fan fiction lore](https://kalepail.com/kale) courtesy of [Bri Wylde](https://github.com/briwylde08)
 
 ## A Proof-of-<i>Team</i>work Stellar Asset
