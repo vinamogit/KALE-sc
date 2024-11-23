@@ -120,7 +120,7 @@ Want to submit mainnet transactions for free? Use [Launchtube](https://github.co
 * [Rust miner](https://github.com/kalepail/kale-farmer) — [Tyler van der Hoeven](https://github.com/kalepail)
 
 ## Join The Discussion
-Come chat it up in the [`KALE` forum discussion](https://discord.com/channels/761985725453303838/1304843790351204403) on the Stellar Global Discord server.
+Come chat it up in the [`KALE` forum discussion](https://discord.gg/stellar-global-761985725453303838) on the Stellar Global Discord server.
 
 ---
 
