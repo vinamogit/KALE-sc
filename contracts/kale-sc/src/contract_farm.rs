@@ -33,12 +33,12 @@ impl FarmTrait for Contract {
                 // set with some reasonable defaults
                 Block {
                     timestamp: env.ledger().timestamp(),
-                    min_gap: 1,
+                    min_gap: 0,
                     min_stake: 0,
-                    min_zeros: 7,
-                    max_gap: 60,
-                    max_stake: 5_0000000,
-                    max_zeros: 10,
+                    min_zeros: 5,
+                    max_gap: 40,
+                    max_stake: 1_0000000,
+                    max_zeros: 8,
                     entropy: BytesN::from_array(&env, &[0; 32]),
                     staked_total: 0,
                     normalized_total: 0,

@@ -1,5 +1,10 @@
 // use crate::ContractArgs;
-use soroban_sdk::{contractimpl, panic_with_error, token, Address, BytesN, Env};
+use soroban_sdk::{
+    auth::{Context, CustomAccountInterface},
+    contractimpl,
+    crypto::Hash,
+    panic_with_error, token, vec, Address, BytesN, Env, Val, Vec,
+};
 
 use crate::{
     errors::Errors,
@@ -79,6 +84,22 @@ impl HomesteadTrait for Contract {
     }
 }
 
-// TODO add a __check_auth method that let's the homesteader sign for inbound auth
-// We've got a balance on the asset https://stellar.expert/explorer/public/contract/CB23WRDQWGSP6YPMY4UV5C4OW5CBTXKYN3XEATG7KJEZCXMJBYEHOUOV
-// Would like to be able to burn it, but to do that we'd need permission from the contract (the asset admin) to do so
+#[contractimpl]
+impl CustomAccountInterface for Contract {
+    type Error = Errors;
+    type Signature = Option<Vec<Val>>;
+
+    #[allow(non_snake_case)]
+    fn __check_auth(
+        env: Env,
+        _signature_payload: Hash<32>,
+        _signatures: Option<Vec<Val>>,
+        _auth_contexts: Vec<Context>,
+    ) -> Result<(), Errors> {
+        let homesteader = get_farm_homesteader(&env);
+
+        homesteader.require_auth_for_args(vec![&env]);
+
+        Ok(())
+    }
+}

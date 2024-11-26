@@ -119,6 +119,25 @@ fn integer_nth_root(y: u64, n: u32) -> u64 {
 
     low - 1
 }
+fn check_zeros(max_zeros: u32, hash: &[u8]) -> u32 {
+    let mut zeros = max_zeros;
+    let mut index = zeros / 2;
+
+    loop {
+        let more = unsafe { hash.get_unchecked(index as usize).leading_zeros() };
+
+        if more == 8 {
+            zeros += 2;
+        } else {
+            zeros += more / 4;
+            break;
+        }
+
+        index += 1;
+    }
+
+    zeros
+}
 
 #[test]
 fn test() {
@@ -233,4 +252,39 @@ fn test_integer_nth_root() {
     let res = integer_nth_root(y, n);
 
     println!("{:?}", res);
+}
+
+#[test]
+fn test_unsafe_stuff() {
+    let hash1: &[u8] =
+        &hex::decode("00100000000f2ea462db5f7a04090430384433845c3367d55c06f20efd6656").unwrap();
+
+    println!("{:?}", check_zeros(0, hash1));
+
+    let hash2: &[u8] =
+        &hex::decode("00000000000f2ea462db5f7a04090430384433845c3367d55c06f20efd6656").unwrap();
+
+    println!("{:?}", check_zeros(2, hash2));
+
+    // unsafe {
+    //     let mut index = 0;
+    //     let mut zeros = 0;
+
+    //     loop {
+    //         let more = hash.get_unchecked(index as usize).count_zeros();
+
+    //         if more == 8 {
+    //             zeros += 2;
+    //         } else if more >= 4 {
+    //             zeros += more / 4;
+    //             break;
+    //         } else {
+    //             break;
+    //         }
+
+    //         index += 1;
+    //     }
+
+    //     println!("{:?} {:?}", index, zeros);
+    // }
 }
