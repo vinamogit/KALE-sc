@@ -1,4 +1,4 @@
-// use crate::ContractArgs;
+use crate::ContractArgs;
 use soroban_fixed_point_math::SorobanFixedPoint;
 use soroban_sdk::{contractimpl, panic_with_error, token, xdr::ToXdr, Address, Bytes, BytesN, Env};
 
@@ -20,7 +20,21 @@ impl FarmTrait for Contract {
 
         let asset = get_farm_asset(&env);
         let mut index = get_farm_index(&env);
-        let mut farm_block = get_farm_block(&env).unwrap_or(empty_block(&env));
+        let mut farm_block = get_farm_block(&env).unwrap_or(
+            // empty_block(&env)
+            Block {
+                timestamp: env.ledger().timestamp(),
+                min_gap: 0,
+                min_stake: 0,
+                min_zeros: 5,
+                max_gap: 40,
+                max_stake: 1_0000000,
+                max_zeros: 8,
+                entropy: BytesN::from_array(&env, &[0; 32]),
+                staked_total: 0,
+                normalized_total: 0,
+            },
+        );
         let paused = get_farm_paused(&env);
         let mut block = match get_block(&env, index) {
             // genesis or evicted
@@ -43,6 +57,7 @@ impl FarmTrait for Contract {
                     staked_total: 0,
                     normalized_total: 0,
                 }
+                // empty_block(&env)
             }
             Some(block) => {
                 // if the block is >= BLOCK_INTERVAL old, we need to create a new one

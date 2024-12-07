@@ -10,7 +10,7 @@ stellar contract invoke --id CDQKZ76ZS7LYDOZ2E7OG5LUJEWDDUNYBVYRJTBJK6645DZBNJWA
 stellar contract invoke --id CDBG4XY2T5RRPH7HKGZIWMR2MFPLC6RJ453ITXQGNQXG6LNVL4375MRJ --network testnet --source default -- homestead --farmer default --asset CDQKZ76ZS7LYDOZ2E7OG5LUJEWDDUNYBVYRJTBJK6645DZBNJWA7DXCR
 
 # Upgrade
-stellar contract invoke --id CDBG4XY2T5RRPH7HKGZIWMR2MFPLC6RJ453ITXQGNQXG6LNVL4375MRJ --network testnet --source default -- upgrade --hash 58cc3d8407670cd466cd239a31348214e229ad1a0bb75aca20d80481809d2a10
+stellar contract invoke --id CDBG4XY2T5RRPH7HKGZIWMR2MFPLC6RJ453ITXQGNQXG6LNVL4375MRJ --network testnet --source default -- upgrade --hash e82316a485178c755021134b9c184f1dc2ac29878dfd37b661254402a64297bd
 
 # Plant
 stellar contract invoke --id CDBG4XY2T5RRPH7HKGZIWMR2MFPLC6RJ453ITXQGNQXG6LNVL4375MRJ --network testnet --source default -- plant --amount 0 --farmer default

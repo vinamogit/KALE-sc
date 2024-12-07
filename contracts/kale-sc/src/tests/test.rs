@@ -33,7 +33,7 @@ fn test() {
     let sequence = env.ledger().sequence();
     let timestamp = env.ledger().timestamp();
 
-    let farm_address: Address = env.register_contract(None, Contract);
+    let farm_address: Address = env.register(Contract, ());
     let farm_client = ContractClient::new(&env, &farm_address);
 
     let asset_sac = env.register_stellar_asset_contract_v2(farm_address.clone());

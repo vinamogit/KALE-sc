@@ -179,7 +179,7 @@ fn test() {
 fn test_address_lengths() {
     let env: Env = Env::default();
 
-    let farm_address: Address = env.register_contract(None, Contract);
+    let farm_address: Address = env.register(Contract, ());
 
     let ed25519_keypair = Keypair::from_bytes(&[
         149, 154, 40, 132, 13, 234, 167, 87, 182, 44, 152, 45, 242, 179, 187, 17, 139, 106, 49, 85,
