@@ -3,7 +3,7 @@ use soroban_sdk::{
     auth::{Context, CustomAccountInterface},
     contractimpl,
     crypto::Hash,
-    panic_with_error, token, vec, Address, BytesN, Env, Val, Vec,
+    panic_with_error, vec, Address, BytesN, Env, Val, Vec,
 };
 
 use crate::{
@@ -18,15 +18,11 @@ use crate::{
 
 #[contractimpl]
 impl HomesteadTrait for Contract {
-    fn homestead(env: Env, farmer: Address, asset: Address) {
+    fn __constructor(env: Env, farmer: Address, asset: Address) {
         farmer.require_auth();
 
         if has_farm_homesteader(&env) {
             panic_with_error!(&env, &Errors::HomesteadExists);
-        }
-
-        if token::StellarAssetClient::new(&env, &asset).admin() != env.current_contract_address() {
-            panic_with_error!(&env, &Errors::AssetAdminInvalid);
         }
 
         set_farm_homesteader(&env, &farmer);

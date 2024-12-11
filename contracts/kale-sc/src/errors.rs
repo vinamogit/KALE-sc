@@ -5,7 +5,6 @@ use soroban_sdk::contracterror;
 pub enum Errors {
     HomesteadExists = 1,
     HomesteadMissing = 2,
-    AssetAdminInvalid = 3,
     FarmPaused = 4,
     FarmNotPaused = 5,
     PlantAmountTooLow = 6,

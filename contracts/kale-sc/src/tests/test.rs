@@ -33,17 +33,17 @@ fn test() {
     let sequence = env.ledger().sequence();
     let timestamp = env.ledger().timestamp();
 
-    let farm_address: Address = env.register(Contract, ());
-    let farm_client = ContractClient::new(&env, &farm_address);
+    let homesteader: Address = Address::generate(&env);
 
-    let asset_sac = env.register_stellar_asset_contract_v2(farm_address.clone());
+    let asset_sac = env.register_stellar_asset_contract_v2(homesteader.clone());
     let asset_address = asset_sac.address();
     let asset_homesteader = token::StellarAssetClient::new(&env, &asset_address);
     let asset_client = token::Client::new(&env, &asset_address);
 
-    let homesteader: Address = Address::generate(&env);
+    let farm_address: Address = env.register(Contract, (&homesteader, &asset_address));
+    let farm_client = ContractClient::new(&env, &farm_address);
 
-    farm_client.homestead(&homesteader, &asset_address);
+    asset_homesteader.set_admin(&farm_address);
 
     let farmer_1: Address = Address::generate(&env);
     let farmer_2: Address = Address::generate(&env);
@@ -82,8 +82,7 @@ fn test() {
     let index = index.unwrap_or(0);
     let block = block.unwrap();
 
-    println!("{:?}", index);
-    println!("{:?}", block);
+    println!("{} {:?}", index, block);
     print!("\n");
 
     let (nonce_0, hash_0) = find_nonce_and_hash(&env, &index, &block.entropy, &farmer_1, 0);
@@ -150,6 +149,17 @@ fn test() {
     farm_client.work(&farmer_2, &hash_2, &nonce_2); // 7 zeros
     farm_client.work(&farmer_3, &hash_3, &nonce_3); // 8 zeros
 
+    env.as_contract(&farm_address, || {
+        let block = env
+            .storage()
+            .temporary()
+            .get::<Storage, Block>(&Storage::Block(index))
+            .unwrap();
+
+        println!("{} {:?}", index, block);
+        print!("\n");
+    });
+
     env.ledger().set_timestamp(timestamp + BLOCK_INTERVAL);
 
     farm_client.plant(&farmer_1, &0);
@@ -177,24 +187,20 @@ fn test() {
     );
     print!("\n");
 
-    let mut index: Option<u32> = None;
-    let mut block: Option<Block> = None;
-
     env.as_contract(&farm_address, || {
-        index = env
+        let index = env
             .storage()
             .instance()
-            .get::<Storage, u32>(&Storage::FarmIndex);
+            .get::<Storage, u32>(&Storage::FarmIndex)
+            .unwrap();
 
-        block = env
+        let block = env
             .storage()
             .temporary()
-            .get::<Storage, Block>(&Storage::Block(index.unwrap()));
+            .get::<Storage, Block>(&Storage::Block(index))
+            .unwrap();
+
+        println!("{:?}", index);
+        println!("{:?}", block);
     });
-
-    let index = index.unwrap();
-    let block = block.unwrap();
-
-    println!("{:?}", index);
-    println!("{:?}", block);
 }

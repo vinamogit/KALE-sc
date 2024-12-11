@@ -20,43 +20,26 @@ impl FarmTrait for Contract {
 
         let asset = get_farm_asset(&env);
         let mut index = get_farm_index(&env);
-        let mut farm_block = get_farm_block(&env).unwrap_or(empty_block(&env));
+        let mut farm_block = get_farm_block(&env).unwrap_or(new_farm_block(&env));
         let paused = get_farm_paused(&env);
         let mut block = match get_block(&env, index) {
             // genesis or evicted
             None => {
-                // we're in an evicted scenario so the index should be bumped
                 if index > 0 {
+                    // Only when we're in an evicted scenario should the index be bumped
                     bump_farm_index(&env, &mut index);
                 }
 
-                // set with some reasonable defaults
-                Block {
-                    timestamp: env.ledger().timestamp(),
-                    min_gap: 0,
-                    min_stake: 0,
-                    min_zeros: 5,
-                    max_gap: 40,
-                    max_stake: 1_0000000,
-                    max_zeros: 8,
-                    entropy: BytesN::from_array(&env, &[0; 32]),
-                    staked_total: 0,
-                    normalized_total: 0,
-                }
+                new_block(&env, &farm_block)
             }
             Some(block) => {
                 // if the block is >= BLOCK_INTERVAL old, we need to create a new one
                 if env.ledger().timestamp() >= block.timestamp + BLOCK_INTERVAL {
-                    // initialize with the values from the previous block
-                    let mut block = farm_block.clone();
+                    let block = new_block(&env, &farm_block);
 
-                    block.timestamp = env.ledger().timestamp();
-                    block.staked_total = 0;
-                    block.normalized_total = 0;
-
-                    // ensure we put this after the `farm_block.clone` above
+                    // ensure we put this after the `new_block` above
+                    farm_block = new_farm_block(&env);
                     bump_farm_index(&env, &mut index);
-                    farm_block = empty_block(&env);
 
                     block
                 } else {
@@ -227,16 +210,55 @@ impl FarmTrait for Contract {
     }
 }
 
-pub fn empty_block(env: &Env) -> Block {
+fn new_farm_block(env: &Env) -> Block {
     Block {
         timestamp: env.ledger().timestamp(),
-        min_gap: 0,
-        min_stake: 0,
-        min_zeros: 0,
-        max_gap: 0,
-        max_stake: 0,
-        max_zeros: 0,
+        min_gap: u32::MAX,
+        min_stake: i128::MAX,
+        min_zeros: u32::MAX,
+        max_gap: u32::MIN,
+        max_stake: i128::MIN,
+        max_zeros: u32::MIN,
         entropy: BytesN::from_array(env, &[0; 32]),
+        staked_total: 0,
+        normalized_total: 0,
+    }
+}
+
+fn new_block(env: &Env, farm_block: &Block) -> Block {
+    Block {
+        timestamp: env.ledger().timestamp(),
+        min_gap: if farm_block.min_gap == u32::MAX {
+            0
+        } else {
+            farm_block.min_gap
+        },
+        min_stake: if farm_block.min_stake == i128::MAX {
+            0
+        } else {
+            farm_block.min_stake
+        },
+        min_zeros: if farm_block.min_zeros == u32::MAX {
+            0
+        } else {
+            farm_block.min_zeros
+        },
+        max_gap: if farm_block.max_gap == u32::MIN {
+            0
+        } else {
+            farm_block.max_gap
+        },
+        max_stake: if farm_block.max_stake == i128::MIN {
+            0
+        } else {
+            farm_block.max_stake
+        },
+        max_zeros: if farm_block.max_zeros == u32::MIN {
+            0
+        } else {
+            farm_block.max_zeros
+        },
+        entropy: farm_block.entropy.clone(),
         staked_total: 0,
         normalized_total: 0,
     }
@@ -274,7 +296,7 @@ fn generate_normalizations(
     stake: i128,
     zeros: u32,
 ) -> (i128, i128, i128) {
-    // TODO I believe this is actually impossible to hit now (consider dropping)
+    // TODO This should be impossible to hit (consider dropping)
     if block.max_gap < block.min_gap
         || block.max_stake < block.min_stake
         || block.max_zeros < block.min_zeros
@@ -283,22 +305,22 @@ fn generate_normalizations(
     }
 
     let range_gap = (block.max_gap - block.min_gap).max(1) as i128;
-    let range_stake = block.max_stake - block.min_stake.max(1);
-    let range_zero = (block.max_zeros - block.min_zeros).max(1) as i128;
+    let range_stake = (block.max_stake - block.min_stake).max(1);
+    let range_zeros = (block.max_zeros - block.min_zeros).max(1) as i128;
 
     let ceiling = (block.max_gap as i128)
         .max(block.max_stake)
         .max(block.max_zeros as i128)
         .max(1);
 
-    let gap = gap.min(block.max_gap).max(block.min_gap);
-    let stake = stake.min(block.max_stake).max(block.min_stake);
-    let zeros = zeros.min(block.max_zeros).max(block.min_zeros);
+    let gap = gap.min(block.max_gap).max(block.min_gap).max(1);
+    let stake = stake.min(block.max_stake).max(block.min_stake).max(1);
+    let zeros = zeros.min(block.max_zeros).max(block.min_zeros).max(1);
 
     let normalized_gap = ceiling.fixed_div_floor(env, &range_gap, &((gap - block.min_gap) as i128));
     let normalized_stake = ceiling.fixed_div_floor(env, &range_stake, &(stake - block.min_stake));
-    let normalized_zero =
-        ceiling.fixed_div_floor(env, &range_zero, &((zeros - block.min_zeros) as i128));
+    let normalized_zeros =
+        ceiling.fixed_div_floor(env, &range_zeros, &((zeros - block.min_zeros) as i128));
 
-    (normalized_gap, normalized_stake, normalized_zero)
+    (normalized_gap, normalized_stake, normalized_zeros)
 }
