@@ -787,7 +787,7 @@ dependencies = [
 
 [[package]]
 name = "kale-sc"
-version = "0.0.1"
+version = "1.0.0"
 dependencies = [
  "ed25519-dalek 1.0.1",
  "hex",

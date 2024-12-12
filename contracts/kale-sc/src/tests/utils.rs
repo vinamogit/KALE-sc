@@ -4,12 +4,212 @@ use std::println;
 extern crate std;
 
 use ed25519_dalek::Keypair;
-use soroban_fixed_point_math::FixedPoint;
-use soroban_sdk::{xdr::ToXdr, Address, Bytes, BytesN, Env};
+use soroban_fixed_point_math::SorobanFixedPoint;
+use soroban_sdk::{testutils::Address as _, xdr::ToXdr, Address, Bytes, BytesN, Env};
 use stellar_strkey::{ed25519, Strkey};
 use tiny_keccak::{Hasher, Keccak};
 
-use crate::Contract;
+use crate::{
+    types::{Block, Pail},
+    BLOCK_REWARD,
+};
+
+#[test]
+fn test_zero_harvest() {
+    let env = Env::default();
+
+    let block = Block {
+        entropy: BytesN::from_array(&env, &[0; 32]),
+        max_gap: 36,
+        max_stake: 1_0000000,
+        max_zeros: 9,
+        min_gap: 8,
+        min_stake: 0,
+        min_zeros: 8,
+        normalized_total: 109285718,
+        staked_total: 0,
+        timestamp: 1733940929,
+    };
+
+    let pail = Pail {
+        gap: Some(8),
+        sequence: 54783826,
+        stake: 0,
+        zeros: Some(8),
+    };
+
+    let (normalized_gap, normalized_stake, normalized_zeros) = generate_normalizations(
+        &env,
+        &block,
+        pail.gap.unwrap(),
+        pail.stake,
+        pail.zeros.unwrap(),
+    );
+
+    let reward = (normalized_gap + normalized_stake + normalized_zeros).fixed_mul_floor(
+        &env,
+        &(BLOCK_REWARD + block.staked_total),
+        &block.normalized_total.max(1),
+    );
+
+    println!("{:?}", reward);
+}
+
+#[test]
+fn test_misc() {
+    let env = Env::default();
+
+    let max_zero: i128 = 9;
+    let min_zero: i128 = 5;
+    let my_zero: i128 = 4;
+
+    let range_zero = max_zero - min_zero;
+
+    println!(
+        "{:?}",
+        100_0000000.fixed_mul_floor(&env, &(my_zero - min_zero), &range_zero)
+    );
+
+    let max_stake: i128 = 100_0000000;
+    let min_stake: i128 = 1;
+    let my_stake: i128 = 10_0000000;
+
+    let range_stake = max_stake - min_stake;
+
+    println!(
+        "{:?}",
+        100_0000000.fixed_mul_floor(&env, &(my_stake - min_stake), &range_stake)
+    );
+
+    let max_gap: i128 = 60;
+    let min_gap: i128 = 1;
+    let my_gap: i128 = 40;
+
+    let range_gap = max_gap - min_gap;
+
+    println!(
+        "{:?}",
+        100_0000000.fixed_mul_floor(&env, &(my_gap - min_gap), &range_gap)
+    );
+}
+
+#[test]
+fn test_address_lengths() {
+    let env: Env = Env::default();
+
+    let contract_address = env
+        .register_stellar_asset_contract_v2(Address::generate(&env))
+        .address();
+
+    let ed25519_keypair = Keypair::from_bytes(&[
+        149, 154, 40, 132, 13, 234, 167, 87, 182, 44, 152, 45, 242, 179, 187, 17, 139, 106, 49, 85,
+        249, 235, 17, 248, 24, 170, 19, 164, 23, 117, 145, 252, 172, 35, 170, 26, 69, 15, 75, 127,
+        192, 170, 166, 54, 68, 127, 218, 29, 130, 173, 159, 1, 253, 192, 48, 242, 80, 12, 55, 152,
+        223, 122, 198, 96,
+    ])
+    .unwrap();
+
+    let ed25519_strkey =
+        Strkey::PublicKeyEd25519(ed25519::PublicKey(ed25519_keypair.public.to_bytes()));
+    let ed25519_address = Bytes::from_slice(&env, ed25519_strkey.to_string().as_bytes());
+    let ed25519_address = Address::from_string_bytes(&ed25519_address);
+
+    println!(
+        "g-{:?} {:?}",
+        ed25519_address.clone().to_xdr(&env).len(),
+        ed25519_address.to_string()
+    );
+    println!(
+        "c-{:?} {:?}",
+        contract_address.clone().to_xdr(&env).len(),
+        contract_address.to_string()
+    );
+}
+
+#[test]
+fn test_count_bytes() {
+    let env = Env::default();
+
+    let bytesn: BytesN<32> = BytesN::from_array(
+        &env,
+        &hex::decode("00000000075122504cde7b56f7a295ab5588a88eb74f87048d1c0ff9ec083bcb")
+            .unwrap()
+            .try_into()
+            .unwrap(),
+    );
+
+    let mut count = 0;
+
+    for byte in bytesn {
+        if byte == 0 {
+            count += 2;
+        } else {
+            // Use leading_zeros to count bits, convert to hex digits
+            count += byte.leading_zeros() / 4;
+            break;
+        }
+    }
+
+    println!("{:?}", count);
+}
+
+#[test]
+fn test_fixed_mul_floor() {
+    let env = Env::default();
+
+    let x: i128 = 10;
+    let y: i128 = 1_0000000;
+    let denominator: i128 = 100;
+
+    let res = x.fixed_mul_floor(&env, &y, &denominator);
+
+    println!("{:?}", res);
+}
+
+#[test]
+fn test_integer_nth_root() {
+    let y = 1_0000000;
+    let n = 8;
+
+    let res = integer_nth_root(y, n);
+
+    println!("{:?}", res);
+}
+
+#[test]
+fn test_unsafe_stuff() {
+    let hash1: &[u8] =
+        &hex::decode("00100000000f2ea462db5f7a04090430384433845c3367d55c06f20efd6656").unwrap();
+
+    println!("{:?}", check_zeros(0, hash1));
+
+    let hash2: &[u8] =
+        &hex::decode("00000000000f2ea462db5f7a04090430384433845c3367d55c06f20efd6656").unwrap();
+
+    println!("{:?}", check_zeros(2, hash2));
+
+    // unsafe {
+    //     let mut index = 0;
+    //     let mut zeros = 0;
+
+    //     loop {
+    //         let more = hash.get_unchecked(index as usize).count_zeros();
+
+    //         if more == 8 {
+    //             zeros += 2;
+    //         } else if more >= 4 {
+    //             zeros += more / 4;
+    //             break;
+    //         } else {
+    //             break;
+    //         }
+
+    //         index += 1;
+    //     }
+
+    //     println!("{:?} {:?}", index, zeros);
+    // }
+}
 
 pub fn find_nonce_and_hash(
     env: &Env,
@@ -79,6 +279,7 @@ fn generate_hash(
 
     hash_array
 }
+
 fn integer_nth_root(y: u64, n: u32) -> u64 {
     if y == 0 {
         return 0;
@@ -119,6 +320,7 @@ fn integer_nth_root(y: u64, n: u32) -> u64 {
 
     low - 1
 }
+
 fn check_zeros(max_zeros: u32, hash: &[u8]) -> u32 {
     let mut zeros = max_zeros;
     let mut index = zeros / 2;
@@ -139,152 +341,44 @@ fn check_zeros(max_zeros: u32, hash: &[u8]) -> u32 {
     zeros
 }
 
-#[test]
-fn test() {
-    let max_zero: i128 = 9;
-    let min_zero: i128 = 5;
-    let my_zero: i128 = 4;
+fn generate_normalizations(
+    env: &Env,
+    block: &Block,
+    gap: u32,
+    stake: i128,
+    zeros: u32,
+) -> (i128, i128, i128) {
+    // Calculate ranges
+    let range_gap = ((block.max_gap - block.min_gap) as i128).max(1);
+    let range_stake = (block.max_stake - block.min_stake).max(1);
+    let range_zeros = ((block.max_zeros - block.min_zeros) as i128).max(1);
 
-    let range_zero = max_zero - min_zero;
+    // Find largest range for scaling
+    let max_range = range_gap.max(range_stake).max(range_zeros);
 
-    println!(
-        "{:?}",
-        100_0000000.fixed_div_floor(range_zero, my_zero - min_zero)
-    );
+    // Set minimum threshold (1% of max_range)
+    let min_threshold = (max_range / 100).max(1);
 
-    let max_stake: i128 = 100_0000000;
-    let min_stake: i128 = 1;
-    let my_stake: i128 = 10_0000000;
+    // Clamp inputs to valid ranges
+    let gap = gap.max(block.min_gap).min(block.max_gap);
+    let stake = stake.max(block.min_stake).min(block.max_stake);
+    let zeros = zeros.max(block.min_zeros).min(block.max_zeros);
 
-    let range_stake = max_stake - min_stake;
-
-    println!(
-        "{:?}",
-        100_0000000.fixed_div_floor(range_stake, my_stake - min_stake)
-    );
-
-    let max_gap: i128 = 60;
-    let min_gap: i128 = 1;
-    let my_gap: i128 = 40;
-
-    let range_gap = max_gap - min_gap;
-
-    println!(
-        "{:?}",
-        100_0000000.fixed_div_floor(range_gap, my_gap - min_gap)
-    );
-}
-
-#[test]
-fn test_address_lengths() {
-    let env: Env = Env::default();
-
-    let farm_address: Address = env.register(Contract, ());
-
-    let ed25519_keypair = Keypair::from_bytes(&[
-        149, 154, 40, 132, 13, 234, 167, 87, 182, 44, 152, 45, 242, 179, 187, 17, 139, 106, 49, 85,
-        249, 235, 17, 248, 24, 170, 19, 164, 23, 117, 145, 252, 172, 35, 170, 26, 69, 15, 75, 127,
-        192, 170, 166, 54, 68, 127, 218, 29, 130, 173, 159, 1, 253, 192, 48, 242, 80, 12, 55, 152,
-        223, 122, 198, 96,
-    ])
-    .unwrap();
-
-    let ed25519_strkey =
-        Strkey::PublicKeyEd25519(ed25519::PublicKey(ed25519_keypair.public.to_bytes()));
-    let ed25519_address = Bytes::from_slice(&env, ed25519_strkey.to_string().as_bytes());
-    let ed25519_address = Address::from_string_bytes(&ed25519_address);
+    // Scale each value relative to max_range
+    let normalized_gap = ((gap - block.min_gap) as i128)
+        .fixed_mul_floor(&env, &max_range, &range_gap)
+        .max(min_threshold);
+    let normalized_stake = ((stake - block.min_stake) as i128)
+        .fixed_mul_floor(&env, &max_range, &range_stake)
+        .max(min_threshold);
+    let normalized_zeros = ((zeros - block.min_zeros) as i128)
+        .fixed_mul_floor(&env, &max_range, &range_zeros)
+        .max(min_threshold);
 
     println!(
-        "g-{:?} {:?}",
-        ed25519_address.clone().to_xdr(&env).len(),
-        ed25519_address.to_string()
-    );
-    println!(
-        "c-{:?} {:?}",
-        farm_address.clone().to_xdr(&env).len(),
-        farm_address.to_string()
-    );
-}
-
-#[test]
-fn count_bytes() {
-    let env = Env::default();
-
-    let bytesn: BytesN<32> = BytesN::from_array(
-        &env,
-        &hex::decode("00000000075122504cde7b56f7a295ab5588a88eb74f87048d1c0ff9ec083bcb")
-            .unwrap()
-            .try_into()
-            .unwrap(),
+        "{:?} {:?} {:?}",
+        normalized_gap, normalized_stake, normalized_zeros
     );
 
-    let mut count = 0;
-
-    for byte in bytesn {
-        if byte == 0 {
-            count += 2;
-        } else {
-            // Use leading_zeros to count bits, convert to hex digits
-            count += byte.leading_zeros() / 4;
-            break;
-        }
-    }
-
-    println!("{:?}", count);
-}
-
-#[test]
-fn test_fixed_div_floor() {
-    let x: i128 = 10;
-    let y: i128 = 100;
-    let denominator: i128 = 1_0000000;
-
-    let res = x.fixed_div_floor(y, denominator);
-
-    println!("{:?}", res);
-}
-
-#[test]
-fn test_integer_nth_root() {
-    let y = 1_0000000;
-    let n = 8;
-
-    let res = integer_nth_root(y, n);
-
-    println!("{:?}", res);
-}
-
-#[test]
-fn test_unsafe_stuff() {
-    let hash1: &[u8] =
-        &hex::decode("00100000000f2ea462db5f7a04090430384433845c3367d55c06f20efd6656").unwrap();
-
-    println!("{:?}", check_zeros(0, hash1));
-
-    let hash2: &[u8] =
-        &hex::decode("00000000000f2ea462db5f7a04090430384433845c3367d55c06f20efd6656").unwrap();
-
-    println!("{:?}", check_zeros(2, hash2));
-
-    // unsafe {
-    //     let mut index = 0;
-    //     let mut zeros = 0;
-
-    //     loop {
-    //         let more = hash.get_unchecked(index as usize).count_zeros();
-
-    //         if more == 8 {
-    //             zeros += 2;
-    //         } else if more >= 4 {
-    //             zeros += more / 4;
-    //             break;
-    //         } else {
-    //             break;
-    //         }
-
-    //         index += 1;
-    //     }
-
-    //     println!("{:?} {:?}", index, zeros);
-    // }
+    (normalized_gap, normalized_stake, normalized_zeros)
 }

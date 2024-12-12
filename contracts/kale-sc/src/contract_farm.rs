@@ -118,10 +118,10 @@ impl FarmTrait for Contract {
             }
         }
 
-        let (normalized_gap, normalized_stake, normalized_zero) =
+        let (normalized_gap, normalized_stake, normalized_zeros) =
             generate_normalizations(&env, &block, gap, pail.stake, zeros);
 
-        block.normalized_total += normalized_gap + normalized_stake + normalized_zero;
+        block.normalized_total += normalized_gap + normalized_stake + normalized_zeros;
 
         match pail.zeros {
             Some(prev_zeros) => {
@@ -129,11 +129,11 @@ impl FarmTrait for Contract {
                     panic_with_error!(&env, &Errors::ZeroCountTooLow);
                 }
 
-                let (prev_normalized_gap, prev_normalized_stake, prev_normalized_zero) =
+                let (prev_normalized_gap, prev_normalized_stake, prev_normalized_zeros) =
                     generate_normalizations(&env, &block, gap, pail.stake, prev_zeros);
 
                 block.normalized_total -=
-                    prev_normalized_gap + prev_normalized_stake + prev_normalized_zero;
+                    prev_normalized_gap + prev_normalized_stake + prev_normalized_zeros;
             }
             None => {
                 block.staked_total -= pail.stake;
@@ -191,16 +191,18 @@ impl FarmTrait for Contract {
         let gap = gap.unwrap();
         let zeros = zeros.unwrap();
 
-        let (normalized_gap, normalized_stake, normalized_zero) =
+        let (normalized_gap, normalized_stake, normalized_zeros) =
             generate_normalizations(&env, &block, gap, stake, zeros);
 
-        let reward = (normalized_gap + normalized_stake + normalized_zero).fixed_div_floor(
+        let reward = (normalized_gap + normalized_stake + normalized_zeros).fixed_mul_floor(
             &env,
-            &block.normalized_total,
             &(BLOCK_REWARD + block.staked_total),
+            &block.normalized_total.max(1),
         ) + stake;
 
-        token::StellarAssetClient::new(&env, &asset).mint(&farmer, &reward);
+        if reward > 0 {
+            token::StellarAssetClient::new(&env, &asset).mint(&farmer, &reward);
+        }
 
         remove_pail(&env, farmer.clone(), index);
 
@@ -296,7 +298,7 @@ fn generate_normalizations(
     stake: i128,
     zeros: u32,
 ) -> (i128, i128, i128) {
-    // TODO This should be impossible to hit (consider dropping)
+    // TODO should be impossible to hit (consider dropping)
     if block.max_gap < block.min_gap
         || block.max_stake < block.min_stake
         || block.max_zeros < block.min_zeros
@@ -304,23 +306,34 @@ fn generate_normalizations(
         panic_with_error!(&env, &Errors::BlockInvalid);
     }
 
+    // Calculate ranges
     let range_gap = (block.max_gap - block.min_gap).max(1) as i128;
     let range_stake = (block.max_stake - block.min_stake).max(1);
     let range_zeros = (block.max_zeros - block.min_zeros).max(1) as i128;
 
-    let ceiling = (block.max_gap as i128)
-        .max(block.max_stake)
-        .max(block.max_zeros as i128)
-        .max(1);
+    // Find largest range for scaling
+    let max_range = range_gap.max(range_stake).max(range_zeros);
 
-    let gap = gap.min(block.max_gap).max(block.min_gap).max(1);
-    let stake = stake.min(block.max_stake).max(block.min_stake).max(1);
-    let zeros = zeros.min(block.max_zeros).max(block.min_zeros).max(1);
+    // Set minimum threshold (1% of max_range)
+    // This is intended to prevent normalization from being too small
+    // Won't disable zero reward claim but will decrease their likelihood
+    let min_threshold = (max_range / 100).max(1);
 
-    let normalized_gap = ceiling.fixed_div_floor(env, &range_gap, &((gap - block.min_gap) as i128));
-    let normalized_stake = ceiling.fixed_div_floor(env, &range_stake, &(stake - block.min_stake));
-    let normalized_zeros =
-        ceiling.fixed_div_floor(env, &range_zeros, &((zeros - block.min_zeros) as i128));
+    // Clamp inputs to valid ranges
+    let gap = gap.max(block.min_gap).min(block.max_gap);
+    let stake = stake.max(block.min_stake).min(block.max_stake);
+    let zeros = zeros.max(block.min_zeros).min(block.max_zeros);
+
+    // Scale each value relative to max_range
+    let normalized_gap = ((gap - block.min_gap) as i128)
+        .fixed_mul_floor(&env, &max_range, &range_gap)
+        .max(min_threshold);
+    let normalized_stake = ((stake - block.min_stake) as i128)
+        .fixed_mul_floor(&env, &max_range, &range_stake)
+        .max(min_threshold);
+    let normalized_zeros = ((zeros - block.min_zeros) as i128)
+        .fixed_mul_floor(&env, &max_range, &range_zeros)
+        .max(min_threshold);
 
     (normalized_gap, normalized_stake, normalized_zeros)
 }
