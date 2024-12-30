@@ -22,31 +22,18 @@ impl FarmTrait for Contract {
         let mut index = get_farm_index(&env);
         let mut farm_block = get_farm_block(&env).unwrap_or(new_farm_block(&env));
         let paused = get_farm_paused(&env);
-        let mut block = match get_block(&env, index) {
-            // genesis or evicted
-            None => {
-                if index > 0 {
-                    // Only when we're in an evicted scenario should the index be bumped
-                    bump_farm_index(&env, &mut index);
-                }
 
-                new_block(&env, &farm_block)
-            }
-            Some(block) => {
-                // if the block is >= BLOCK_INTERVAL old, we need to create a new one
-                if env.ledger().timestamp() >= block.timestamp + BLOCK_INTERVAL {
-                    let block = new_block(&env, &farm_block);
+        // genesis or evicted
+        // if the block is >= BLOCK_INTERVAL old, we need to create a new one
+        if env.ledger().timestamp() >= farm_block.timestamp + BLOCK_INTERVAL || index == 0 {
+            // Store previous block
+            let block = new_block(&env, &farm_block);
+            set_block(&env, index, &block);
 
-                    // ensure we put this after the `new_block` above
-                    farm_block = new_farm_block(&env);
-                    bump_farm_index(&env, &mut index);
-
-                    block
-                } else {
-                    block
-                }
-            }
-        };
+            // ensure we put this after the `new_block` above
+            bump_farm_index(&env, &mut index);
+            farm_block = new_farm_block(&env);
+        }
 
         if paused {
             panic_with_error!(&env, &Errors::FarmPaused);
@@ -61,7 +48,7 @@ impl FarmTrait for Contract {
             panic_with_error!(&env, &Errors::PailExists);
         }
 
-        block.staked_total += amount;
+        farm_block.staked_total += amount;
 
         if amount > 0 {
             token::Client::new(&env, &asset).burn(&farmer, &amount);
@@ -83,7 +70,6 @@ impl FarmTrait for Contract {
         };
 
         set_pail(&env, farmer, index, pail);
-        set_block(&env, index, &block);
         set_farm_block(&env, &farm_block);
 
         extend_instance_ttl(&env);
@@ -95,12 +81,12 @@ impl FarmTrait for Contract {
         let index = get_farm_index(&env);
         let mut farm_block = get_farm_block(&env)
             .unwrap_or_else(|| panic_with_error!(&env, &Errors::HomesteadMissing));
-        let mut block = get_block(&env, index)
+        let Block { entropy, .. } = get_block(&env, index.saturating_sub(1))
             .unwrap_or_else(|| panic_with_error!(&env, &Errors::BlockMissing));
         let mut pail = get_pail(&env, farmer.clone(), index)
             .unwrap_or_else(|| panic_with_error!(&env, &Errors::PailMissing));
 
-        let generated_hash = generate_hash(&env, &index, &nonce, &block.entropy, &farmer);
+        let generated_hash = generate_hash(&env, &index, &nonce, &entropy, &farmer);
         let sequence = env.ledger().sequence();
         let gap = sequence - pail.sequence;
         let mut zeros = 0;
@@ -115,28 +101,6 @@ impl FarmTrait for Contract {
             } else {
                 zeros += byte.leading_zeros() / 4;
                 break;
-            }
-        }
-
-        let (normalized_gap, normalized_stake, normalized_zeros) =
-            generate_normalizations(&env, &block, gap, pail.stake, zeros);
-
-        block.normalized_total += normalized_gap + normalized_stake + normalized_zeros;
-
-        match pail.zeros {
-            Some(prev_zeros) => {
-                if zeros <= prev_zeros {
-                    panic_with_error!(&env, &Errors::ZeroCountTooLow);
-                }
-
-                let (prev_normalized_gap, prev_normalized_stake, prev_normalized_zeros) =
-                    generate_normalizations(&env, &block, gap, pail.stake, prev_zeros);
-
-                block.normalized_total -=
-                    prev_normalized_gap + prev_normalized_stake + prev_normalized_zeros;
-            }
-            None => {
-                block.staked_total -= pail.stake;
             }
         }
 
@@ -158,11 +122,32 @@ impl FarmTrait for Contract {
             farm_block.min_zeros = zeros;
         }
 
+        let (normalized_gap, normalized_stake, normalized_zeros) =
+            generate_normalizations(&env, &farm_block, gap, pail.stake, zeros);
+
+        farm_block.normalized_total += normalized_gap + normalized_stake + normalized_zeros;
+
+        match pail.zeros {
+            Some(prev_zeros) => {
+                if zeros <= prev_zeros {
+                    panic_with_error!(&env, &Errors::ZeroCountTooLow);
+                }
+
+                let (prev_normalized_gap, prev_normalized_stake, prev_normalized_zeros) =
+                    generate_normalizations(&env, &farm_block, gap, pail.stake, prev_zeros);
+
+                farm_block.normalized_total -=
+                    prev_normalized_gap + prev_normalized_stake + prev_normalized_zeros;
+            }
+            None => {
+                farm_block.staked_total -= pail.stake;
+            }
+        }
+
         pail.gap = Some(gap);
         pail.zeros = Some(zeros);
 
         set_pail(&env, farmer, index, pail);
-        set_block(&env, index, &block);
         set_farm_block(&env, &farm_block);
 
         extend_instance_ttl(&env);
@@ -261,8 +246,8 @@ fn new_block(env: &Env, farm_block: &Block) -> Block {
             farm_block.max_zeros
         },
         entropy: farm_block.entropy.clone(),
-        staked_total: 0,
-        normalized_total: 0,
+        staked_total: farm_block.staked_total,
+        normalized_total: farm_block.normalized_total,
     }
 }
 
@@ -326,13 +311,13 @@ fn generate_normalizations(
 
     // Scale each value relative to max_range
     let normalized_gap = ((gap - block.min_gap) as i128)
-        .fixed_mul_floor(&env, &max_range, &range_gap)
+        .fixed_mul_floor(env, &max_range, &range_gap)
         .max(min_threshold);
-    let normalized_stake = ((stake - block.min_stake) as i128)
-        .fixed_mul_floor(&env, &max_range, &range_stake)
+    let normalized_stake = (stake - block.min_stake)
+        .fixed_mul_floor(env, &max_range, &range_stake)
         .max(min_threshold);
     let normalized_zeros = ((zeros - block.min_zeros) as i128)
-        .fixed_mul_floor(&env, &max_range, &range_zeros)
+        .fixed_mul_floor(env, &max_range, &range_zeros)
         .max(min_threshold);
 
     (normalized_gap, normalized_stake, normalized_zeros)

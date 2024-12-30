@@ -54,7 +54,7 @@ pub fn bump_farm_index(env: &Env, current_farm_index: &mut u32) {
 
     env.storage()
         .instance()
-        .set::<Storage, u32>(&Storage::FarmIndex, &current_farm_index);
+        .set::<Storage, u32>(&Storage::FarmIndex, current_farm_index);
 }
 
 pub fn get_farm_block(env: &Env) -> Option<Block> {
