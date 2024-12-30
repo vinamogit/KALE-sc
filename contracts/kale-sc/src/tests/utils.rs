@@ -237,7 +237,7 @@ pub fn find_nonce_and_hash(
             }
         }
 
-        if leading_zeros >= zeros {
+        if leading_zeros == zeros {
             return (nonce, BytesN::from_array(env, &hash));
         }
 
@@ -248,7 +248,7 @@ pub fn find_nonce_and_hash(
 fn generate_keccak(hash_b: &mut [u8; 76], nonce: &u64) -> [u8; 32] {
     let mut hash = [0u8; 32];
 
-    hash_b[8..16].copy_from_slice(&nonce.to_be_bytes());
+    hash_b[4..12].copy_from_slice(&nonce.to_be_bytes());
 
     let mut keccak = Keccak::v256();
     keccak.update(hash_b);
@@ -366,13 +366,13 @@ fn generate_normalizations(
 
     // Scale each value relative to max_range
     let normalized_gap = ((gap - block.min_gap) as i128)
-        .fixed_mul_floor(&env, &max_range, &range_gap)
+        .fixed_mul_floor(env, &max_range, &range_gap)
         .max(min_threshold);
-    let normalized_stake = ((stake - block.min_stake) as i128)
-        .fixed_mul_floor(&env, &max_range, &range_stake)
+    let normalized_stake = (stake - block.min_stake)
+        .fixed_mul_floor(env, &max_range, &range_stake)
         .max(min_threshold);
     let normalized_zeros = ((zeros - block.min_zeros) as i128)
-        .fixed_mul_floor(&env, &max_range, &range_zeros)
+        .fixed_mul_floor(env, &max_range, &range_zeros)
         .max(min_threshold);
 
     println!(
